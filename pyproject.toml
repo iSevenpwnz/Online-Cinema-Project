@@ -2,7 +2,7 @@
 name = "src"
 version = "0.1.0"
 description = "Mate task for first lesson"
-authors = ["Yurii Okal <yurii.okal@mate.com>"]
+authors = ["Mykhailo Safronov <isevenpwnz@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
