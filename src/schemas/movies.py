@@ -22,12 +22,7 @@ class LanguageSchema(BaseModel):
     name: str
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                language_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
 
@@ -37,12 +32,7 @@ class CountrySchema(BaseModel):
     name: Optional[str]
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                country_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
 
@@ -51,12 +41,7 @@ class GenreSchema(BaseModel):
     name: str
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                genre_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
 
@@ -65,12 +50,7 @@ class ActorSchema(BaseModel):
     name: str
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                actor_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
 

@@ -41,9 +41,13 @@ validators = "^0.34.0"
 [tool.poetry.group.dev.dependencies]
 types-passlib = "*"
 types-python-jose = "*"
-[tool.mypy.overrides]
-"aioboto3.*" = { ignore_missing_imports = true }
-"botocore.*" = { ignore_missing_imports = true }
+[[tool.mypy.overrides]]
+module = "aioboto3.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "botocore.*"
+ignore_missing_imports = true
 pandas-stubs = "*"
 types-tqdm = "*"
 [build-system]
