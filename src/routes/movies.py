@@ -48,24 +48,10 @@ async def get_movie_list(
         db: AsyncSession = Depends(get_db),
 ) -> MovieListResponseSchema:
     """
-    Fetch a paginated list of movies from the database (asynchronously).
-
-    This function retrieves a paginated list of movies, allowing the client to specify
-    the page number and the number of items per page. It calculates the total pages
-    and provides links to the previous and next pages when applicable.
-
-    :param page: The page number to retrieve (1-based index, must be >= 1).
-    :type page: int
-    :param per_page: The number of items to display per page (must be between 1 and 20).
-    :type per_page: int
-    :param db: The async SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :return: A response containing the paginated list of movies and metadata.
-    :rtype: MovieListResponseSchema
-
-    :raises HTTPException: Raises a 404 error if no movies are found for the requested page.
-    """
+        Retrieves a paginated list of movies with metadata and navigation links.
+        
+        Returns a list of movies for the specified page and page size, including total item and page counts, and links to previous and next pages when applicable. Raises a 404 error if no movies are found.
+        """
     offset = (page - 1) * per_page
 
     count_stmt = select(func.count(MovieModel.id))
@@ -132,24 +118,10 @@ async def create_movie(
         db: AsyncSession = Depends(get_db)
 ) -> MovieDetailSchema:
     """
-    Add a new movie to the database.
-
-    This endpoint allows the creation of a new movie with details such as
-    name, release date, genres, actors, and languages. It automatically
-    handles linking or creating related entities.
-
-    :param movie_data: The data required to create a new movie.
-    :type movie_data: MovieCreateSchema
-    :param db: The SQLAlchemy async database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :return: The created movie with all details.
-    :rtype: MovieDetailSchema
-
-    :raises HTTPException:
-        - 409 if a movie with the same name and date already exists.
-        - 400 if input data is invalid (e.g., violating a constraint).
-    """
+        Creates a new movie entry with associated details and related entities.
+        
+        Checks for duplicate movies by name and release date, links or creates related country, genres, actors, and languages, and returns the created movie's details. Raises a 409 error if a duplicate exists or 400 if input data is invalid.
+        """
     existing_stmt = select(MovieModel).where(
         (MovieModel.name == movie_data.name),
         (MovieModel.date == movie_data.date)
@@ -261,21 +233,10 @@ async def get_movie_by_id(
         db: AsyncSession = Depends(get_db),
 ) -> MovieDetailSchema:
     """
-    Retrieve detailed information about a specific movie by its ID.
-
-    This function fetches detailed information about a movie identified by its unique ID.
-    If the movie does not exist, a 404 error is returned.
-
-    :param movie_id: The unique identifier of the movie to retrieve.
-    :type movie_id: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :return: The details of the requested movie.
-    :rtype: MovieDetailResponseSchema
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-    """
+        Retrieves detailed information for a movie by its unique ID.
+        
+        Returns a MovieDetailSchema with all related entities if found; raises a 404 error if the movie does not exist.
+        """
     stmt = (
         select(MovieModel)
         .options(
@@ -327,21 +288,10 @@ async def delete_movie(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Delete a specific movie by its ID.
-
-    This function deletes a movie identified by its unique ID.
-    If the movie does not exist, a 404 error is raised.
-
-    :param movie_id: The unique identifier of the movie to delete.
-    :type movie_id: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-
-    :return: A response indicating the successful deletion of the movie.
-    :rtype: None
-    """
+        Deletes a movie by its unique ID.
+        
+        Raises a 404 error if the movie does not exist. Returns a confirmation message upon successful deletion.
+        """
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
     result = await db.execute(stmt)
     movie = result.scalars().first()
@@ -391,23 +341,17 @@ async def update_movie(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Update a specific movie by its ID.
-
-    This function updates a movie identified by its unique ID.
-    If the movie does not exist, a 404 error is raised.
-
-    :param movie_id: The unique identifier of the movie to update.
-    :type movie_id: int
-    :param movie_data: The updated data for the movie.
-    :type movie_data: MovieUpdateSchema
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-
-    :return: A response indicating the successful update of the movie.
-    :rtype: None
-    """
+        Updates an existing movie by its ID with the provided data.
+        
+        Raises a 404 error if the movie does not exist, or a 400 error if the input data is invalid.
+        
+        Args:
+            movie_id: The ID of the movie to update.
+            movie_data: Partial data to update the movie with.
+        
+        Returns:
+            A JSON object confirming the successful update.
+        """
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
     result = await db.execute(stmt)
     movie = result.scalars().first()

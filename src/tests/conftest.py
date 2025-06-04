@@ -20,6 +20,11 @@ from tests.doubles.stubs.emails import StubEmailSender
 
 
 def pytest_configure(config):
+    """
+    Registers custom pytest markers for end-to-end tests, test execution order, and unit tests.
+    
+    Adds "e2e", "order", and "unit" markers to the pytest configuration for use in test categorization and ordering.
+    """
     config.addinivalue_line(
         "markers", "e2e: End-to-end tests"
     )
@@ -34,11 +39,9 @@ def pytest_configure(config):
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def reset_db(request):
     """
-    Reset the SQLite database before each test function, except for tests marked with 'e2e'.
-
-    By default, this fixture ensures that the database is cleared and recreated before every
-    test function to maintain test isolation. However, if the test is marked with 'e2e',
-    the database reset is skipped to allow preserving state between end-to-end tests.
+    Resets the SQLite database before each test function unless the test is marked as end-to-end.
+    
+    Skips the reset for tests marked with 'e2e' to preserve database state across end-to-end tests.
     """
     if "e2e" in request.keywords:
         yield
@@ -50,10 +53,9 @@ async def reset_db(request):
 @pytest_asyncio.fixture(scope="session")
 async def reset_db_once_for_e2e(request):
     """
-    Reset the database once for end-to-end tests.
-
-    This fixture is intended to be used for end-to-end tests at the session scope,
-    ensuring the database is reset before running E2E tests.
+    Resets the database once before running the end-to-end test suite.
+    
+    This session-scoped fixture ensures a clean database state for all E2E tests.
     """
     await reset_database()
 
@@ -61,9 +63,10 @@ async def reset_db_once_for_e2e(request):
 @pytest_asyncio.fixture(scope="session")
 async def settings():
     """
-    Provide application settings.
-
-    This fixture returns the application settings by calling get_settings().
+    Provides application settings for tests.
+    
+    Returns:
+        The application settings object as returned by get_settings().
     """
     return get_settings()
 
@@ -71,9 +74,10 @@ async def settings():
 @pytest_asyncio.fixture(scope="function")
 async def email_sender_stub():
     """
-    Provide a stub implementation of the email sender.
-
-    This fixture returns an instance of StubEmailSender for testing purposes.
+    Provides a stub email sender for testing.
+    
+    Returns:
+        An instance of StubEmailSender to simulate email sending in tests.
     """
     return StubEmailSender()
 
@@ -81,9 +85,10 @@ async def email_sender_stub():
 @pytest_asyncio.fixture(scope="function")
 async def s3_storage_fake():
     """
-    Provide a fake S3 storage client.
-
-    This fixture returns an instance of FakeS3Storage for testing purposes.
+    Provides a fake S3 storage client for testing.
+    
+    Returns:
+        An instance of FakeS3Storage to simulate S3 interactions during tests.
     """
     return FakeS3Storage()
 
@@ -91,9 +96,10 @@ async def s3_storage_fake():
 @pytest_asyncio.fixture(scope="session")
 async def s3_client(settings):
     """
-    Provide an S3 storage client.
-
-    This fixture returns an instance of S3StorageClient configured with the application settings.
+    Provides an S3 storage client configured with application settings.
+    
+    Returns:
+        An instance of S3StorageClient initialized with endpoint URL, access key, secret key, and bucket name from the application settings.
     """
     return S3StorageClient(
         endpoint_url=settings.S3_STORAGE_ENDPOINT,
@@ -106,9 +112,10 @@ async def s3_client(settings):
 @pytest_asyncio.fixture(scope="function")
 async def client(email_sender_stub, s3_storage_fake):
     """
-    Provide an asynchronous HTTP client for testing.
-
-    Overrides the dependencies for email sender and S3 storage with test doubles.
+    Provides an asynchronous HTTP client for testing with email sender and S3 storage dependencies overridden by test doubles.
+    
+    Yields:
+        An AsyncClient instance configured to interact with the FastAPI app using stubbed email and fake S3 storage services.
     """
     app.dependency_overrides[get_accounts_email_notificator] = lambda: email_sender_stub
     app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
@@ -122,9 +129,9 @@ async def client(email_sender_stub, s3_storage_fake):
 @pytest_asyncio.fixture(scope="session")
 async def e2e_client():
     """
-    Provide an asynchronous HTTP client for end-to-end tests.
-
-    This client is available at the session scope.
+    Provides an asynchronous HTTP client for end-to-end tests.
+    
+    Yields an AsyncClient instance configured to interact with the FastAPI app using ASGI transport. The client is scoped to the entire test session.
     """
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as async_client:
         yield async_client
@@ -133,10 +140,10 @@ async def e2e_client():
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
     """
-    Provide an async database session for database interactions.
-
-    This fixture yields an async session using `get_db_contextmanager`, ensuring that the session
-    is properly closed after each test.
+    Provides an asynchronous database session for use in tests.
+    
+    Yields:
+        An async database session that is automatically closed after each test.
     """
     async with get_db_contextmanager() as session:
         yield session
@@ -145,12 +152,11 @@ async def db_session():
 @pytest_asyncio.fixture(scope="session")
 async def e2e_db_session():
     """
-    Provide an async database session for end-to-end tests.
-
-    This fixture yields an async session using `get_db_contextmanager` at the session scope,
-    ensuring that the same session is used throughout the E2E test suite.
-    Note: Using a session-scoped DB session in async tests may lead to shared state between tests,
-    so use this fixture with caution if tests run concurrently.
+    Provides a session-scoped asynchronous database session for end-to-end tests.
+    
+    Yields:
+        An async database session shared across all E2E tests in the session.
+        Shared state may occur if tests run concurrently.
     """
     async with get_db_contextmanager() as session:
         yield session
@@ -159,15 +165,10 @@ async def e2e_db_session():
 @pytest_asyncio.fixture(scope="function")
 async def jwt_manager() -> JWTAuthManagerInterface:
     """
-    Asynchronous fixture to create a JWT authentication manager instance.
-
-    This fixture retrieves the application settings via `get_settings()` and uses them to
-    instantiate a `JWTAuthManager`. The manager is configured with the secret keys for
-    access and refresh tokens, as well as the JWT signing algorithm specified in the settings.
-
+    Provides a JWT authentication manager configured with secret keys and signing algorithm from application settings.
+    
     Returns:
-        JWTAuthManagerInterface: An instance of JWTAuthManager configured with the appropriate
-        secret keys and algorithm.
+        An instance of JWTAuthManagerInterface for managing JWT authentication.
     """
     settings = get_settings()
     return JWTAuthManager(
@@ -180,10 +181,9 @@ async def jwt_manager() -> JWTAuthManagerInterface:
 @pytest_asyncio.fixture(scope="function")
 async def seed_user_groups(db_session: AsyncSession):
     """
-    Asynchronously seed the UserGroupModel table with default user groups.
-
-    This fixture inserts all user groups defined in UserGroupEnum into the database and commits the transaction.
-    It then yields the asynchronous database session for further testing.
+    Seeds the UserGroupModel table with all user groups defined in UserGroupEnum.
+    
+    Inserts each user group into the database and commits the transaction, then yields the asynchronous database session for use in tests.
     """
     groups = [{"name": group.value} for group in UserGroupEnum]
     await db_session.execute(insert(UserGroupModel).values(groups))
@@ -194,13 +194,9 @@ async def seed_user_groups(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope="function")
 async def seed_database(db_session):
     """
-    Seed the database with test data if it is empty.
-
-    This fixture initializes a `CSVDatabaseSeeder` and ensures the test database is populated before
-    running tests that require existing data.
-
-    :param db_session: The async database session fixture.
-    :type db_session: AsyncSession
+    Seeds the database with test data from a CSV file if the database is empty.
+    
+    Initializes a CSVDatabaseSeeder using the CSV file path from settings and the provided async database session. If the database is not already populated, it loads test data before yielding the session for use in tests.
     """
     settings = get_settings()
     seeder = CSVDatabaseSeeder(csv_file_path=settings.PATH_TO_MOVIES_CSV, db_session=db_session)

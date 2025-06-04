@@ -40,28 +40,15 @@ async def create_profile(
     profile_data: ProfileCreateSchema = Depends(ProfileCreateSchema.from_form),
 ) -> ProfileResponseSchema:
     """
-    Creates a user profile.
-
-    Steps:
-    - Validate user authentication token.
-    - Check if the user already has a profile.
-    - Upload avatar to S3 storage.
-    - Store profile details in the database.
-
+    Creates a user profile for the specified user.
+    
+    Validates the requesting user's authentication and authorization, ensures the target user exists and is active, checks for an existing profile, uploads the avatar to S3 storage, and stores the new profile in the database. Returns the created profile details, including the public URL of the uploaded avatar.
+    
     Args:
-        user_id (int): The ID of the user for whom the profile is being created.
-        token (str): The authentication token.
-        jwt_manager (JWTAuthManagerInterface): JWT manager for decoding tokens.
-        db (AsyncSession): The asynchronous database session.
-        s3_client (S3StorageInterface): The asynchronous S3 storage client.
-        profile_data (ProfileCreateSchema): The profile data from the form.
-
+        user_id: ID of the user for whom the profile is being created.
+    
     Returns:
-        ProfileResponseSchema: The created user profile details.
-
-    Raises:
-        HTTPException: If authentication fails, if the user is not found or inactive,
-                       or if the profile already exists, or if S3 upload fails.
+        The created user profile details.
     """
     try:
         payload = jwt_manager.decode_access_token(token)

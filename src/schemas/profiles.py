@@ -29,7 +29,12 @@ class ProfileCreateSchema(BaseModel):
             info: str = Form(...),
             avatar: UploadFile = File(...)
     ) -> "ProfileCreateSchema":
-        return cls(
+        """
+            Creates a ProfileCreateSchema instance from form data and an uploaded avatar file.
+            
+            Intended for use with FastAPI endpoints that accept multipart form data for profile creation.
+            """
+            return cls(
             first_name=first_name,
             last_name=last_name,
             gender=gender,
@@ -41,6 +46,11 @@ class ProfileCreateSchema(BaseModel):
     @field_validator("first_name", "last_name")
     @classmethod
     def validate_name_field(cls, name: str) -> str:
+        """
+        Validates a name field and returns it in lowercase.
+        
+        Raises an HTTP 422 exception with detailed error information if the name is invalid.
+        """
         try:
             validate_name(name)
             return name.lower()
@@ -58,6 +68,15 @@ class ProfileCreateSchema(BaseModel):
     @field_validator("avatar")
     @classmethod
     def validate_avatar(cls, avatar: UploadFile) -> UploadFile:
+        """
+        Validates the uploaded avatar image file.
+        
+        Raises:
+            HTTPException: If the avatar file fails image validation, with status code 422 and error details.
+        
+        Returns:
+            The validated avatar file.
+        """
         try:
             validate_image(avatar)
             return avatar
@@ -75,6 +94,15 @@ class ProfileCreateSchema(BaseModel):
     @field_validator("gender")
     @classmethod
     def validate_gender(cls, gender: str) -> str:
+        """
+        Validates the gender field and raises an HTTP 422 error if invalid.
+        
+        Returns:
+            The validated gender string.
+        
+        Raises:
+            HTTPException: If the gender value is invalid, with details about the error.
+        """
         try:
             validate_gender(gender)
             return gender
@@ -92,6 +120,15 @@ class ProfileCreateSchema(BaseModel):
     @field_validator("date_of_birth")
     @classmethod
     def validate_date_of_birth(cls, date_of_birth: date) -> date:
+        """
+        Validates the date of birth field using an external birth date validator.
+        
+        Raises:
+            HTTPException: If the date of birth is invalid, with status code 422 and error details.
+        
+        Returns:
+            The validated date of birth.
+        """
         try:
             validate_birth_date(date_of_birth)
             return date_of_birth
@@ -109,6 +146,17 @@ class ProfileCreateSchema(BaseModel):
     @field_validator("info")
     @classmethod
     def validate_info(cls, info: str) -> str:
+        """
+        Validates and cleans the 'info' field by removing leading and trailing whitespace.
+        
+        Raises an HTTP 422 error if the resulting string is empty or contains only spaces.
+        
+        Args:
+            info: The input string for the 'info' field.
+        
+        Returns:
+            The trimmed 'info' string if valid.
+        """
         cleaned_info = info.strip()
         if not cleaned_info:
             raise HTTPException(

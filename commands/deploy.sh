@@ -3,7 +3,25 @@
 # Exit the script immediately if any command exits with a non-zero status
 set -e
 
-# Function to handle errors with custom messages
+# Prints a custom error message and exits the script with status 1.
+#
+# Arguments:
+#
+# * Error message to display before exiting.
+#
+# Outputs:
+#
+# * Prints the provided error message to STDOUT.
+#
+# Returns:
+#
+# * Exits the script with status code 1.
+#
+# Example:
+#
+# ```bash
+# handle_error "Failed to change directory"
+# ```
 handle_error() {
     echo "Error: $1"
     exit 1

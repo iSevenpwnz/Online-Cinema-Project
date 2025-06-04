@@ -58,6 +58,9 @@ class GenreModel(Base):
     )
 
     def __repr__(self):
+        """
+        Returns a string representation of the genre, displaying its name.
+        """
         return f"<Genre(name='{self.name}')>"
 
 
@@ -74,6 +77,9 @@ class ActorModel(Base):
     )
 
     def __repr__(self):
+        """
+        Returns a string representation of the actor, including the actor's name.
+        """
         return f"<Actor(name='{self.name}')>"
 
 
@@ -87,6 +93,9 @@ class CountryModel(Base):
     movies: Mapped[list["MovieModel"]] = relationship("MovieModel", back_populates="country")
 
     def __repr__(self):
+        """
+        Returns a string representation of the country, including its code and name.
+        """
         return f"<Country(code='{self.code}', name='{self.name}')>"
 
 
@@ -103,6 +112,9 @@ class LanguageModel(Base):
     )
 
     def __repr__(self):
+        """
+        Returns a string representation of the language, including its name.
+        """
         return f"<Language(name='{self.name}')>"
 
 
@@ -147,7 +159,16 @@ class MovieModel(Base):
 
     @classmethod
     def default_order_by(cls):
+        """
+        Returns the default ordering for query results as descending by ID.
+        
+        Returns:
+            A list containing a SQLAlchemy ordering clause for descending ID.
+        """
         return [cls.id.desc()]
 
     def __repr__(self):
+        """
+        Returns a string representation of the movie, including its name, release date, and score.
+        """
         return f"<Movie(name='{self.name}', release_date='{self.date}', score={self.score})>"

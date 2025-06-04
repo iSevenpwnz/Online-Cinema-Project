@@ -14,11 +14,29 @@ class BaseEmailPasswordSchema(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value):
+        """
+        Normalizes the email address to lowercase.
+        
+        Args:
+            value: The email address to normalize.
+        
+        Returns:
+            The email address in lowercase.
+        """
         return value.lower()
 
     @field_validator("password")
     @classmethod
     def validate_password(cls, value):
+        """
+        Validates that the provided password meets strength requirements.
+        
+        Returns:
+            The validated password if it satisfies strength criteria.
+        
+        Raises:
+            ValueError: If the password does not meet strength requirements.
+        """
         return accounts_validators.validate_password_strength(value)
 
 

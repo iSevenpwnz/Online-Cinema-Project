@@ -47,6 +47,9 @@ class UserGroupModel(Base):
     users: Mapped[List["UserModel"]] = relationship("UserModel", back_populates="group")
 
     def __repr__(self):
+        """
+        Returns a string representation of the UserGroupModel instance, including its id and name.
+        """
         return f"<UserGroupModel(id={self.id}, name={self.name})>"
 
 
@@ -92,18 +95,29 @@ class UserModel(Base):
     )
 
     def __repr__(self):
+        """
+        Returns a string representation of the user, including ID, email, and active status.
+        """
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
 
     def has_group(self, group_name: UserGroupEnum) -> bool:
+        """
+        Checks if the user belongs to the specified user group.
+        
+        Args:
+            group_name: The user group to check membership against.
+        
+        Returns:
+            True if the user's group matches the specified group; otherwise, False.
+        """
         return self.group.name == group_name
 
     @classmethod
     def create(cls, email: str, raw_password: str, group_id: int | Mapped[int]) -> "UserModel":
         """
-        Factory method to create a new UserModel instance.
-
-        This method simplifies the creation of a new user by handling
-        password hashing and setting required attributes.
+        Creates a new UserModel instance with the given email, password, and group.
+        
+        The password is validated and securely hashed before assignment.
         """
         user = cls(email=email, group_id=group_id)
         user.password = raw_password
@@ -111,24 +125,48 @@ class UserModel(Base):
 
     @property
     def password(self) -> None:
+        """
+        Prevents reading the password by raising an AttributeError.
+        
+        This property ensures that the password is write-only and cannot be accessed directly.
+        """
         raise AttributeError("Password is write-only. Use the setter to set the password.")
 
     @password.setter
     def password(self, raw_password: str) -> None:
         """
-        Set the user's password after validating its strength and hashing it.
+        Sets the user's password after validating its strength and securely hashing it.
+        
+        Args:
+            raw_password: The plain text password to be validated and stored as a hash.
         """
         validators.validate_password_strength(raw_password)
         self._hashed_password = hash_password(raw_password)
 
     def verify_password(self, raw_password: str) -> bool:
         """
-        Verify the provided password against the stored hashed password.
+        Checks if the provided raw password matches the stored hashed password.
+        
+        Args:
+            raw_password: The plaintext password to verify.
+        
+        Returns:
+            True if the password matches the stored hash, False otherwise.
         """
         return verify_password(raw_password, self._hashed_password)
 
     @validates("email")
     def validate_email(self, key, value):
+        """
+        Validates and normalizes an email address to lowercase.
+        
+        Args:
+            key: The attribute key being set (unused).
+            value: The email address to validate.
+        
+        Returns:
+            The validated and normalized email address.
+        """
         return validators.validate_email(value.lower())
 
 
@@ -152,6 +190,9 @@ class UserProfileModel(Base):
     __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
+        """
+        Returns a string representation of the user profile, including ID, first and last names, gender, and date of birth.
+        """
         return (
             f"<UserProfileModel(id={self.id}, first_name={self.first_name}, last_name={self.last_name}, "
             f"gender={self.gender}, date_of_birth={self.date_of_birth})>"
@@ -185,6 +226,9 @@ class ActivationTokenModel(TokenBaseModel):
     __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
+        """
+        Returns a string representation of the activation token, including its ID, token, and expiration time.
+        """
         return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
 
 
@@ -196,6 +240,9 @@ class PasswordResetTokenModel(TokenBaseModel):
     __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
+        """
+        Returns a string representation of the password reset token, including its ID, token, and expiration time.
+        """
         return f"<PasswordResetTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
 
 
@@ -213,14 +260,21 @@ class RefreshTokenModel(TokenBaseModel):
     @classmethod
     def create(cls, user_id: int | Mapped[int], days_valid: int, token: str) -> "RefreshTokenModel":
         """
-        Factory method to create a new RefreshTokenModel instance.
-
-        This method simplifies the creation of a new refresh token by calculating
-        the expiration date based on the provided number of valid days and setting
-        the required attributes.
+        Creates a new refresh token instance with a specified validity period.
+        
+        Args:
+            user_id: The ID of the user to associate with the refresh token.
+            days_valid: Number of days the token will remain valid.
+            token: The refresh token string.
+        
+        Returns:
+            A RefreshTokenModel instance with the specified expiration and token value.
         """
         expires_at = datetime.now(timezone.utc) + timedelta(days=days_valid)
         return cls(user_id=user_id, expires_at=expires_at, token=token)
 
     def __repr__(self):
+        """
+        Returns a string representation of the refresh token model, including its ID, token, and expiration.
+        """
         return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"

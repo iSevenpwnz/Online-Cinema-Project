@@ -17,7 +17,12 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def __init__(self, secret_key_access: str, secret_key_refresh: str, algorithm: str):
         """
-        Initialize the manager with secret keys and algorithm for token operations.
+        Initializes the JWTAuthManager with separate secret keys for access and refresh tokens and specifies the JWT algorithm to use.
+        
+        Args:
+            secret_key_access: Secret key for signing access tokens.
+            secret_key_refresh: Secret key for signing refresh tokens.
+            algorithm: The JWT algorithm to use for encoding and decoding tokens.
         """
         self._secret_key_access = secret_key_access
         self._secret_key_refresh = secret_key_refresh
@@ -25,7 +30,15 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def _create_token(self, data: dict, secret_key: str, expires_delta: timedelta) -> str:
         """
-        Create a JWT token with provided data, secret key, and expiration time.
+        Creates a JWT token containing the provided data and an expiration timestamp.
+        
+        Args:
+            data: The payload to include in the token.
+            secret_key: The secret key used to sign the token.
+            expires_delta: The time duration after which the token expires.
+        
+        Returns:
+            The encoded JWT token as a string.
         """
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + expires_delta
@@ -34,7 +47,16 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """
-        Create a new access token with a default or specified expiration time.
+        Generates a JWT access token containing the provided data and an expiration time.
+        
+        If no expiration is specified, the token expires in 60 minutes by default.
+        
+        Args:
+            data: The payload to include in the token.
+            expires_delta: Optional custom expiration as a timedelta.
+        
+        Returns:
+            A JWT access token as a string.
         """
         return self._create_token(
             data,
@@ -43,7 +65,9 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def create_refresh_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """
-        Create a new refresh token with a default or specified expiration time.
+        Generates a new JWT refresh token with an optional custom expiration time.
+        
+        If no expiration is provided, the token defaults to a 7-day validity period.
         """
         return self._create_token(
             data,
@@ -52,7 +76,11 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def decode_access_token(self, token: str) -> dict:
         """
-        Decode and validate an access token, returning the token's data.
+        Decodes and validates an access token, returning its payload as a dictionary.
+        
+        Raises:
+            TokenExpiredError: If the token has expired.
+            InvalidTokenError: If the token is invalid for any other reason.
         """
         try:
             return jwt.decode(token, self._secret_key_access, algorithms=[self._algorithm])
@@ -63,7 +91,11 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def decode_refresh_token(self, token: str) -> dict:
         """
-        Decode and validate a refresh token, returning the token's data.
+        Decodes and validates a refresh token, returning its payload as a dictionary.
+        
+        Raises:
+            TokenExpiredError: If the token has expired.
+            InvalidTokenError: If the token is invalid for any other reason.
         """
         try:
             return jwt.decode(token, self._secret_key_refresh, algorithms=[self._algorithm])
@@ -74,12 +106,18 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def verify_refresh_token_or_raise(self, token: str) -> None:
         """
-        Verify a refresh token and raise an error if it's invalid or expired.
+        Verifies the validity of a refresh token, raising an error if it is invalid or expired.
+        
+        Any exceptions encountered during decoding, such as token expiration or invalidity, are propagated to the caller.
         """
         self.decode_refresh_token(token)
 
     def verify_access_token_or_raise(self, token: str) -> None:
         """
-        Verify an access token and raise an error if it's invalid or expired.
+        Verifies the validity of an access token, raising an error if the token is invalid or expired.
+        
+        Raises:
+            TokenExpiredError: If the access token has expired.
+            InvalidTokenError: If the access token is invalid for any other reason.
         """
         self.decode_access_token(token)

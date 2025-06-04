@@ -16,15 +16,10 @@ async def test_create_user_profile_with_fake_s3(
         db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
 ):
     """
-    Positive test for creating a user profile.
-
-    Steps:
-    1. Create a test user and activate them.
-    2. Generate an access token using `jwt_manager`.
-    3. Send a profile creation request with an avatar.
-    4. Verify that the avatar was uploaded to `FakeS3Storage`.
-    5. Verify that the profile was created in the database.
-    """
+        Tests successful creation of a user profile with avatar upload using fake S3 storage.
+        
+        Creates and activates a test user, generates an access token, and sends a profile creation request with an avatar image. Asserts that the response is successful, the avatar is uploaded to the fake S3 storage, and the profile is correctly persisted in the database.
+        """
     user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
     user.is_active = True
     db_session.add(user)
@@ -96,15 +91,12 @@ async def test_create_user_profile_with_fake_s3(
 )
 async def test_create_user_profile_invalid_auth(client, headers, expected_status, expected_detail):
     """
-    Test profile creation with missing or incorrectly formatted Authorization header.
-
-    Expected result:
-    - The request should fail with 401 Unauthorized.
-    - The appropriate error message should be returned.
-
-    This test runs twice with:
-    1. No Authorization header at all.
-    2. Incorrect Authorization format (e.g., "Token invalid_token").
+    Tests that profile creation fails with 401 Unauthorized when the Authorization header is missing or incorrectly formatted.
+    
+    Args:
+        headers: HTTP headers to include in the request, controlling the Authorization state.
+        expected_status: The expected HTTP status code (should be 401).
+        expected_detail: The expected error message in the response.
     """
     profile_url = "/api/v1/profiles/users/1/profile/"
     response = await client.post(profile_url, headers=headers)
@@ -116,11 +108,7 @@ async def test_create_user_profile_invalid_auth(client, headers, expected_status
 @pytest.mark.unit
 async def test_create_user_profile_expired_token(client, jwt_manager):
     """
-    Test profile creation with an expired access token.
-
-    Expected result:
-    - The request should fail with 401 Unauthorized.
-    - The error message should be: "Token has expired."
+    Tests that creating a user profile with an expired access token returns 401 Unauthorized and the appropriate error message.
     """
     expired_time = datetime.now() - timedelta(days=1)
     with patch("security.token_manager.datetime") as mock_datetime:
@@ -157,15 +145,8 @@ async def test_admin_creates_user_profile(
         db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
 ):
     """
-    Test that an admin can create a profile for another user.
-
-    Steps:
-    1. Create an admin user and a regular user.
-    2. Generate an access token for the admin.
-    3. Send a request to create a profile for the regular user.
-    4. Verify that the avatar was uploaded to FakeS3Storage.
-    5. Verify that the profile was created in the database.
-    """
+        Tests that an admin user can successfully create a profile for another user, including uploading an avatar image to fake S3 storage and verifying profile data persistence in the database.
+        """
     admin_user = UserModel.create(email="admin@mate.com", raw_password="AdminPass123!", group_id=3)
     admin_user.is_active = True
     db_session.add(admin_user)
@@ -237,14 +218,10 @@ async def test_user_cannot_create_another_user_profile(
         db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
 ):
     """
-    Test that a regular user cannot create a profile for another user.
-
-    Steps:
-    1. Create two regular users.
-    2. Generate an access token for the first user.
-    3. Attempt to create a profile for the second user.
-    4. Verify that the request fails with 403 Forbidden and that no profile is created.
-    """
+        Tests that a regular user cannot create a profile for another user.
+        
+        Attempts to create a user profile for a different user using a valid access token, expecting a 403 Forbidden response and verifying that no profile is created in the database.
+        """
     user_1 = UserModel.create(email="user1@mate.com", raw_password="User1Pass123!", group_id=1)  # 1 = User
     user_1.is_active = True
     db_session.add(user_1)
@@ -297,14 +274,10 @@ async def test_inactive_user_cannot_create_profile(
         db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
 ):
     """
-    Test that an inactive user cannot create a profile.
-
-    Steps:
-    1. Create a user but do not activate them.
-    2. Generate an access token for the user.
-    3. Attempt to create a profile.
-    4. Verify that the request fails with 401 Unauthorized and that no profile is created.
-    """
+        Tests that an inactive user cannot create a profile and receives a 401 Unauthorized error.
+        
+        Verifies that profile creation fails for users who are not marked as active, and ensures no profile is created in the database.
+        """
     user = UserModel.create(email="inactive@mate.com", raw_password="TestPassword123!", group_id=1)
     user.is_active = False
     db_session.add(user)
@@ -349,14 +322,10 @@ async def test_cannot_create_profile_twice(
         db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
 ):
     """
-    Test that a user cannot create a profile twice.
-
-    Steps:
-    1. Create and activate a user.
-    2. Create a profile for the user.
-    3. Attempt to create another profile.
-    4. Verify that the request fails with 400 Bad Request and only one profile exists in the database.
-    """
+        Tests that a user cannot create more than one profile.
+        
+        Creates and activates a user, successfully creates a profile, then attempts to create a second profile for the same user. Verifies that the second attempt fails with a 400 Bad Request and that only one profile exists in the database.
+        """
     user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
     user.is_active = True
     db_session.add(user)
@@ -405,14 +374,10 @@ async def test_profile_creation_fails_on_s3_upload_error(
         db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
 ):
     """
-    Test that profile creation fails if S3 upload fails.
-
-    Steps:
-    1. Create and activate a user.
-    2. Mock `s3_storage_fake.upload_file` to raise `S3FileUploadError`.
-    3. Attempt to create a profile.
-    4. Verify that the request fails with 500 Internal Server Error and no profile is created in the database.
-    """
+        Tests that user profile creation fails with a 500 error if the avatar upload to S3 fails.
+        
+        Simulates an S3 upload failure during profile creation and verifies that no profile is created in the database and the appropriate error message is returned.
+        """
     user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
     user.is_active = True
     db_session.add(user)
@@ -462,10 +427,11 @@ async def test_profile_creation_fails_on_s3_upload_error(
 ])
 async def test_profile_creation_invalid_name(client, jwt_manager, first_name, last_name, expected_error):
     """
-    Test that profile creation fails if the first_name or last_name contains non-English letters.
-
-    This test sends a profile creation request with invalid names and expects a 422 response
-    with an error message containing the specified error text.
+    Tests that profile creation fails when first or last name contains non-English letters.
+    
+    Sends a profile creation request with invalid first or last names and asserts that
+    the response status is 422 Unprocessable Entity with an error message containing
+    the expected error text.
     """
     access_token = jwt_manager.create_access_token({"user_id": 1})
 
@@ -490,11 +456,9 @@ async def test_profile_creation_invalid_name(client, jwt_manager, first_name, la
 @pytest.mark.unit
 async def test_profile_creation_invalid_avatar_format(client, jwt_manager):
     """
-    Test that profile creation fails if the avatar has an unsupported format.
-
-    This test sends a profile creation request with an avatar file in GIF format,
-    which is unsupported. It expects the endpoint to return a 422 status code with an
-    error message indicating "Invalid image format".
+    Tests that profile creation fails when the avatar image format is unsupported.
+    
+    Sends a profile creation request with a GIF avatar and expects a 422 response with an error message about invalid image format.
     """
     access_token = jwt_manager.create_access_token({"user_id": 1})
 
@@ -519,11 +483,9 @@ async def test_profile_creation_invalid_avatar_format(client, jwt_manager):
 @pytest.mark.unit
 async def test_profile_creation_avatar_too_large(db_session, client, jwt_manager):
     """
-    Test that profile creation fails if the avatar exceeds 1MB.
-
-    This test attempts to create a profile using a large JPEG image (created in-memory)
-    that exceeds the allowed size limit (1MB). It expects the endpoint to return a 422 status code
-    with an error message indicating that the image size exceeds the allowed limit.
+    Tests that profile creation fails when the avatar image size exceeds 1MB.
+    
+    Attempts to create a user profile with an in-memory JPEG image larger than 1MB and expects a 422 Unprocessable Entity response with an error message about the image size limit.
     """
     access_token = jwt_manager.create_access_token({"user_id": 1})
 
@@ -552,11 +514,9 @@ async def test_profile_creation_avatar_too_large(db_session, client, jwt_manager
 @pytest.mark.unit
 async def test_profile_creation_invalid_gender(client, jwt_manager):
     """
-    Test that profile creation fails if gender is invalid.
-
-    This test sends a profile creation request with an invalid gender value ("other").
-    It expects the endpoint to return a 422 status code with an error message indicating that
-    the gender must be one of the allowed values.
+    Tests that profile creation fails with a 422 error when an invalid gender value is provided.
+    
+    Sends a profile creation request with a gender value not among the allowed options and asserts that the response contains an appropriate validation error message.
     """
     access_token = jwt_manager.create_access_token({"user_id": 1})
 
@@ -585,10 +545,9 @@ async def test_profile_creation_invalid_gender(client, jwt_manager):
 ])
 async def test_profile_creation_invalid_birth_date(client, jwt_manager, birth_date, expected_error):
     """
-    Test that profile creation fails if birth_date is invalid.
-
-    This test sends a profile creation request with an invalid birth_date value and expects
-    the endpoint to return a 422 status code along with an appropriate error message.
+    Tests that profile creation fails with a 422 error when an invalid birth date is provided.
+    
+    Sends a profile creation request using an invalid birth date and asserts that the response contains the expected error message.
     """
     access_token = jwt_manager.create_access_token({"user_id": 1})
     profile_url = "/api/v1/profiles/users/1/profile/"
@@ -612,10 +571,9 @@ async def test_profile_creation_invalid_birth_date(client, jwt_manager, birth_da
 @pytest.mark.parametrize("info_value", ["", "   "])
 async def test_profile_creation_empty_info(client, jwt_manager, info_value):
     """
-    Test that profile creation fails if the info field is empty or contains only spaces.
-
-    This test sends a profile creation request with an invalid info value and expects
-    a 422 response with an error message indicating that the info field cannot be empty.
+    Tests that user profile creation fails when the info field is empty or contains only spaces.
+    
+    Sends a profile creation request with an invalid info value and asserts that the response status is 422 Unprocessable Entity with an appropriate error message.
     """
     access_token = jwt_manager.create_access_token({"user_id": 1})
     profile_url = "/api/v1/profiles/users/1/profile/"

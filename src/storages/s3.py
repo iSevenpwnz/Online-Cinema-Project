@@ -22,13 +22,9 @@ class S3StorageClient(S3StorageInterface):
         bucket_name: str
     ):
         """
-        Initialize the asynchronous S3 Storage Client using an aioboto3 Session.
-
-        Args:
-            endpoint_url (str): S3-compatible storage endpoint.
-            access_key (str): Access key for authentication.
-            secret_key (str): Secret key for authentication.
-            bucket_name (str): Name of the bucket where files will be stored.
+        Initializes the S3StorageClient with connection parameters and creates an aioboto3 session.
+        
+        Configures the client for asynchronous interaction with an S3-compatible storage service using the provided endpoint URL, access credentials, and bucket name.
         """
         self._endpoint_url = endpoint_url
         self._access_key = access_key
@@ -42,15 +38,11 @@ class S3StorageClient(S3StorageInterface):
 
     async def upload_file(self, file_name: str, file_data: Union[bytes, bytearray]) -> None:
         """
-        Asynchronously upload a file to the S3-compatible storage.
-
-        Args:
-            file_name (str): The name of the file to be stored.
-            file_data (Union[bytes, bytearray]): The file data in bytes.
-
+        Asynchronously uploads file data to the configured S3 bucket under the specified file name.
+        
         Raises:
-            S3ConnectionError: If there is a connection error with S3.
-            S3FileUploadError: If the file upload fails due to a BotoCore error.
+            S3ConnectionError: If a connection-related error occurs during upload.
+            S3FileUploadError: If a BotoCore error occurs while uploading the file.
         """
         try:
             async with self._session.client(
@@ -69,12 +61,12 @@ class S3StorageClient(S3StorageInterface):
 
     async def get_file_url(self, file_name: str) -> str:
         """
-        Generate a public URL for a file stored in the S3-compatible storage.
-
+        Returns the public URL for a file stored in the S3-compatible bucket.
+        
         Args:
-            file_name (str): The name of the file stored in the bucket.
-
+            file_name: The name of the file in the bucket.
+        
         Returns:
-            str: The full URL to access the file.
+            The full URL to access the specified file.
         """
         return f"{self._endpoint_url}/{self._bucket_name}/{file_name}"
