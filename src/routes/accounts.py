@@ -401,8 +401,10 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email or token.",  # Повідомлення для відсутнього токена
         )
-    
-    token_record: PasswordResetTokenModel = cast(PasswordResetTokenModel, token_record_query_result)
+
+    token_record: PasswordResetTokenModel = cast(
+        PasswordResetTokenModel, token_record_query_result
+    )
 
     # Перевірка, чи токен не співпадає
     if token_record.token != data.token:
@@ -428,13 +430,16 @@ async def reset_password(
     # Перевірка прострочення токена
     current_time_utc = datetime.now(timezone.utc)
     token_expires_at = token_record.expires_at
-    
+
     # Переконуємося, що token_expires_at є offset-aware (UTC)
-    if token_expires_at.tzinfo is None or token_expires_at.tzinfo.utcoffset(token_expires_at) is None:
+    if (
+        token_expires_at.tzinfo is None
+        or token_expires_at.tzinfo.utcoffset(token_expires_at) is None
+    ):
         # Якщо expires_at з бази даних "наївний" або tzinfo не встановлено належним чином,
         # припускаємо, що це UTC, і робимо його aware.
         token_expires_at = token_expires_at.replace(tzinfo=timezone.utc)
-    
+
     if token_expires_at < current_time_utc:
         await db.delete(token_record)
         await db.commit()
