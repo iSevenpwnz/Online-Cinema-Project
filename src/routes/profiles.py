@@ -1,5 +1,4 @@
 from typing import cast
-from typing import cast
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -106,7 +105,7 @@ async def create_profile(
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, # Залишаємо 401
+            status_code=status.HTTP_401_UNAUTHORIZED,  # Залишаємо 401
             detail="User not found or not active.",  # Змінюємо повідомлення відповідно до тесту
         )
 

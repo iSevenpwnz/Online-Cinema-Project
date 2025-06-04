@@ -1,6 +1,5 @@
 from typing import cast
 from datetime import datetime, timezone
-from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
