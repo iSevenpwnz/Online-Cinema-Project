@@ -1,9 +1,13 @@
 coverage:
   status:
     project:
-      default:
+      default: # Загальне покриття проекту
         target: 70%
         threshold: 1%
+    patch: # Покриття для змінених рядків (diff coverage)
+      default:
+        target: 70% # Встановлюємо цільове значення для patch coverage
+        threshold: 0% # Допустиме зниження покриття для patch
   ignore:
     - "migrations/*"
     - "tests/*"
