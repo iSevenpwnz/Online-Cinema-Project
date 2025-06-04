@@ -2,10 +2,8 @@
 name = "online-cinema"
 version = "0.1.0"
 description = "Online Cinema FastAPI project"
-authors = ["Твоє ім'я <email@example.com>"]
-packages = [
-    { include = "src/app" }
-]
+authors = ["Mykhailo Safronov <isevenpwnz@gmail.com>"]
+
 
 [tool.poetry.dependencies]
 python = "^3.10"
