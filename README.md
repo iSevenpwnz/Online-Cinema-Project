@@ -1,3 +1,9 @@
+[![codecov](https://codecov.io/gh/iSevenpwnz/Online-Cinema-Project/branch/main/graph/badge.svg)](https://codecov.io/gh/iSevenpwnz/Online-Cinema-Project)
+
+# Online Cinema Project
+
+<!-- решта твого README.md нижче -->
+
 # Розподіл завдань для команди
 
 ## 1. Auth & Users (Учасник 1)
