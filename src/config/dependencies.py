@@ -11,14 +11,9 @@ from storages import S3StorageInterface, S3StorageClient
 
 def get_settings() -> BaseAppSettings:
     """
-    Retrieve the application settings based on the current environment.
-
-    This function reads the 'ENVIRONMENT' environment variable (defaulting to 'developing' if not set)
-    and returns a corresponding settings instance. If the environment is 'testing', it returns an instance
-    of TestingSettings; otherwise, it returns an instance of Settings.
-
-    Returns:
-        BaseAppSettings: The settings instance appropriate for the current environment.
+    Returns application settings for the current environment.
+    
+    Selects and returns a settings instance based on the 'ENVIRONMENT' environment variable, using testing settings if set to 'testing', or default settings otherwise.
     """
     environment = os.getenv("ENVIRONMENT", "developing")
     if environment == "testing":
@@ -28,19 +23,10 @@ def get_settings() -> BaseAppSettings:
 
 def get_jwt_auth_manager(settings: BaseAppSettings = Depends(get_settings)) -> JWTAuthManagerInterface:
     """
-    Create and return a JWT authentication manager instance.
-
-    This function uses the provided application settings to instantiate a JWTAuthManager, which implements
-    the JWTAuthManagerInterface. The manager is configured with secret keys for access and refresh tokens
-    as well as the JWT signing algorithm specified in the settings.
-
-    Args:
-        settings (BaseAppSettings, optional): The application settings instance.
-        Defaults to the output of get_settings().
-
+    Provides a configured JWT authentication manager using application settings.
+    
     Returns:
-        JWTAuthManagerInterface: An instance of JWTAuthManager configured with
-        the appropriate secret keys and algorithm.
+        An instance implementing JWTAuthManagerInterface, initialized with secret keys and signing algorithm from the current settings.
     """
     return JWTAuthManager(
         secret_key_access=settings.SECRET_KEY_ACCESS,
@@ -53,18 +39,9 @@ def get_accounts_email_notificator(
     settings: BaseAppSettings = Depends(get_settings)
 ) -> EmailSenderInterface:
     """
-    Retrieve an instance of the EmailSenderInterface configured with the application settings.
-
-    This function creates an EmailSender using the provided settings, which include details such as the email host,
-    port, credentials, TLS usage, and the directory and filenames for email templates. This allows the application
-    to send various email notifications (e.g., activation, password reset) as required.
-
-    Args:
-        settings (BaseAppSettings, optional): The application settings,
-        provided via dependency injection from `get_settings`.
-
-    Returns:
-        EmailSenderInterface: An instance of EmailSender configured with the appropriate email settings.
+    Provides an EmailSenderInterface instance configured for account-related email notifications.
+    
+    The returned object is set up using application settings for SMTP server details and email templates, enabling the application to send activation and password reset emails.
     """
     return EmailSender(
         hostname=settings.EMAIL_HOST,
@@ -84,18 +61,9 @@ def get_s3_storage_client(
     settings: BaseAppSettings = Depends(get_settings)
 ) -> S3StorageInterface:
     """
-    Retrieve an instance of the S3StorageInterface configured with the application settings.
-
-    This function instantiates an S3StorageClient using the provided settings, which include the S3 endpoint URL,
-    access credentials, and the bucket name. The returned client can be used to interact with an S3-compatible
-    storage service for file uploads and URL generation.
-
-    Args:
-        settings (BaseAppSettings, optional): The application settings,
-        provided via dependency injection from `get_settings`.
-
-    Returns:
-        S3StorageInterface: An instance of S3StorageClient configured with the appropriate S3 storage settings.
+    Provides a configured S3 storage client for interacting with an S3-compatible storage service.
+    
+    The returned client is set up using endpoint, credentials, and bucket information from the application settings.
     """
     return S3StorageClient(
         endpoint_url=settings.S3_STORAGE_ENDPOINT,

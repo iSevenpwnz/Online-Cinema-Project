@@ -9,32 +9,23 @@ pwd_context = CryptContext(
 
 def hash_password(password: str) -> str:
     """
-    Hash a plain-text password using the configured password context.
-
-    This function takes a plain-text password and returns its bcrypt hash.
-    The bcrypt algorithm is used with a specified number of rounds for enhanced security.
-
-    Args:
-        password (str): The plain-text password to hash.
-
-    Returns:
-        str: The resulting hashed password.
+    Hashes a plain-text password using bcrypt.
+    
+    Uses the configured password context to generate a bcrypt hash of the provided password.
+    Returns the hashed password as a string.
     """
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Verify a plain-text password against its hashed version.
-
-    This function compares a plain-text password with a hashed password and returns True
-    if they match, and False otherwise.
-
+    Checks whether a plain-text password matches a given hashed password.
+    
     Args:
-        plain_password (str): The plain-text password provided by the user.
-        hashed_password (str): The hashed password stored in the database.
-
+        plain_password: The plain-text password to verify.
+        hashed_password: The bcrypt-hashed password to compare against.
+    
     Returns:
-        bool: True if the password is correct, False otherwise.
+        True if the plain-text password matches the hashed password, otherwise False.
     """
     return pwd_context.verify(plain_password, hashed_password)

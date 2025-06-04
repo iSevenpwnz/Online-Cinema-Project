@@ -7,20 +7,23 @@ class S3StorageInterface(ABC):
     @abstractmethod
     async def upload_file(self, file_name: str, file_data: Union[bytes, bytearray]) -> None:
         """
-        Uploads a file to the storage.
-
-        :param file_name: The name of the file to be stored.
-        :param file_data: The file data in bytes.
-        :return: URL of the uploaded file.
+        Uploads a file to S3-compatible storage.
+        
+        Args:
+            file_name: Name to assign to the stored file.
+            file_data: File content as bytes or bytearray.
         """
         pass
 
     @abstractmethod
     async def get_file_url(self, file_name: str) -> str:
         """
-        Generate a public URL for a file stored in the S3-compatible storage.
-
-        :param file_name: The name of the file stored in the bucket.
-        :return: The full URL to access the file.
+        Generates a public URL for accessing a file stored in S3-compatible storage.
+        
+        Args:
+            file_name: The name of the file in storage.
+        
+        Returns:
+            The public URL to access the specified file.
         """
         pass

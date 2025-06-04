@@ -26,12 +26,9 @@ sync_postgresql_engine = create_engine(sync_database_url, echo=False)
 
 async def get_postgresql_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    Provide an asynchronous database session.
-
-    This function returns an async generator yielding a new database session.
-    It ensures that the session is properly closed after use.
-
-    :return: An asynchronous generator yielding an AsyncSession instance.
+    Yields an asynchronous PostgreSQL database session for use within an async context.
+    
+    Ensures the session is properly closed after use.
     """
     async with AsyncPostgresqlSessionLocal() as session:
         yield session
@@ -40,12 +37,10 @@ async def get_postgresql_db() -> AsyncGenerator[AsyncSession, None]:
 @asynccontextmanager
 async def get_postgresql_db_contextmanager() -> AsyncGenerator[AsyncSession, None]:
     """
-    Provide an asynchronous database session using a context manager.
-
-    This function allows for managing the database session within a `with` statement.
-    It ensures that the session is properly initialized and closed after execution.
-
-    :return: An asynchronous generator yielding an AsyncSession instance.
+    Asynchronous context manager that yields a PostgreSQL database session.
+    
+    Yields:
+        An AsyncSession instance for use within an async `with` statement. The session is automatically closed when the context exits.
     """
     async with AsyncPostgresqlSessionLocal() as session:
         yield session

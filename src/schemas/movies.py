@@ -70,6 +70,12 @@ class MovieBaseSchema(BaseModel):
     @field_validator("date")
     @classmethod
     def validate_date(cls, value):
+        """
+        Validates that the year of the given date is not greater than next calendar year.
+        
+        Raises:
+            ValueError: If the date's year exceeds the next calendar year.
+        """
         current_year = datetime.now().year
         if value.year > current_year + 1:
             raise ValueError(f"The year in 'date' cannot be greater than {current_year + 1}.")
@@ -132,11 +138,23 @@ class MovieCreateSchema(BaseModel):
     @field_validator("country", mode="before")
     @classmethod
     def normalize_country(cls, value: str) -> str:
+        """
+        Converts the country code to uppercase for normalization during validation.
+        """
         return value.upper()
 
     @field_validator("genres", "actors", "languages", mode="before")
     @classmethod
     def normalize_list_fields(cls, value: List[str]) -> List[str]:
+        """
+        Normalizes each string in the list to title case.
+        
+        Args:
+            value: A list of strings to be normalized.
+        
+        Returns:
+            A list of strings with each item converted to title case.
+        """
         return [item.title() for item in value]
 
 

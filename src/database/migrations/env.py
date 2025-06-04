@@ -29,16 +29,10 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    """
+    Executes database migrations in offline mode using the synchronous PostgreSQL engine.
+    
+    Configures the Alembic context with the database connection and target metadata, enabling comparison of column types and server defaults. Runs all pending migrations within a transaction context.
     """
     connectable = sync_postgresql_engine
 
@@ -55,11 +49,10 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    """
+    Executes database migrations in online mode using a live PostgreSQL connection.
+    
+    Establishes a connection with the synchronous PostgreSQL engine, configures the Alembic context for migration operations, and applies all pending migrations within a transaction.
     """
     connectable = sync_postgresql_engine
 

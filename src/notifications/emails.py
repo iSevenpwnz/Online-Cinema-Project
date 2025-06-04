@@ -24,6 +24,21 @@ class EmailSender(EmailSenderInterface):
         password_email_template_name: str,
         password_complete_email_template_name: str,
     ):
+        """
+        Initializes the EmailSender with SMTP server configuration and email template settings.
+        
+        Args:
+            hostname: SMTP server hostname.
+            port: SMTP server port.
+            email: Email address used for authentication and as the sender.
+            password: Password for the sender email account.
+            use_tls: Whether to use TLS for the SMTP connection.
+            template_dir: Directory containing email templates.
+            activation_email_template_name: Filename of the account activation email template.
+            activation_complete_email_template_name: Filename of the activation completion email template.
+            password_email_template_name: Filename of the password reset email template.
+            password_complete_email_template_name: Filename of the password reset completion email template.
+        """
         self._hostname = hostname
         self._port = port
         self._email = email
@@ -38,15 +53,10 @@ class EmailSender(EmailSenderInterface):
 
     async def _send_email(self, recipient: str, subject: str, html_content: str) -> None:
         """
-        Asynchronously send an email with the given subject and HTML content.
-
-        Args:
-            recipient (str): The recipient's email address.
-            subject (str): The subject of the email.
-            html_content (str): The HTML content of the email.
-
+        Asynchronously sends an HTML email to the specified recipient with the given subject.
+        
         Raises:
-            BaseEmailError: If sending the email fails.
+            BaseEmailError: If sending the email fails due to an SMTP error.
         """
         message = MIMEMultipart()
         message["From"] = self._email
@@ -68,11 +78,9 @@ class EmailSender(EmailSenderInterface):
 
     async def send_activation_email(self, email: str, activation_link: str) -> None:
         """
-        Send an account activation email asynchronously.
-
-        Args:
-            email (str): The recipient's email address.
-            activation_link (str): The activation link to be included in the email.
+        Sends an account activation email with a personalized activation link asynchronously.
+        
+        The email content is rendered from a template using the recipient's email and the provided activation link.
         """
         template = self._env.get_template(self._activation_email_template_name)
         html_content = template.render(email=email, activation_link=activation_link)
@@ -81,11 +89,9 @@ class EmailSender(EmailSenderInterface):
 
     async def send_activation_complete_email(self, email: str, login_link: str) -> None:
         """
-        Send an account activation completion email asynchronously.
-
-        Args:
-            email (str): The recipient's email address.
-            login_link (str): The login link to be included in the email.
+        Sends an account activation completion email with a login link asynchronously.
+        
+        The email is rendered from a template and sent to the specified recipient after successful account activation.
         """
         template = self._env.get_template(self._activation_complete_email_template_name)
         html_content = template.render(email=email, login_link=login_link)
@@ -94,11 +100,9 @@ class EmailSender(EmailSenderInterface):
 
     async def send_password_reset_email(self, email: str, reset_link: str) -> None:
         """
-        Send a password reset request email asynchronously.
-
-        Args:
-            email (str): The recipient's email address.
-            reset_link (str): The reset link to be included in the email.
+        Sends a password reset request email with a reset link asynchronously.
+        
+        The email content is rendered from a template and sent to the specified recipient.
         """
         template = self._env.get_template(self._password_email_template_name)
         html_content = template.render(email=email, reset_link=reset_link)
@@ -107,11 +111,9 @@ class EmailSender(EmailSenderInterface):
 
     async def send_password_reset_complete_email(self, email: str, login_link: str) -> None:
         """
-        Send a password reset completion email asynchronously.
-
-        Args:
-            email (str): The recipient's email address.
-            login_link (str): The login link to be included in the email.
+        Sends a password reset completion email to the specified recipient asynchronously.
+        
+        The email includes a login link and uses a preconfigured HTML template.
         """
         template = self._env.get_template(self._password_complete_email_template_name)
         html_content = template.render(email=email, login_link=login_link)

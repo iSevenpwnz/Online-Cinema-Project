@@ -33,19 +33,20 @@ class CSVDatabaseSeeder:
 
     def __init__(self, csv_file_path: str, db_session: AsyncSession) -> None:
         """
-        Initialize the seeder with the path to the CSV file and an async database session.
-
-        :param csv_file_path: The path to the CSV file containing movie data.
-        :param db_session: An instance of AsyncSession for performing database operations.
+        Initializes the CSVDatabaseSeeder with the CSV file path and asynchronous database session.
+        
+        Args:
+            csv_file_path: Path to the CSV file containing movie data.
         """
         self._csv_file_path = csv_file_path
         self._db_session = db_session
 
     async def is_db_populated(self) -> bool:
         """
-        Check if the MovieModel table has at least one record.
-
-        :return: True if there's already at least one movie in the database, otherwise False.
+        Determines whether the MovieModel table contains any records.
+        
+        Returns:
+            True if at least one movie exists in the database; otherwise, False.
         """
         result = await self._db_session.execute(select(MovieModel).limit(1))
         first_movie = result.scalars().first()
@@ -53,10 +54,12 @@ class CSVDatabaseSeeder:
 
     def _preprocess_csv(self) -> pd.DataFrame:
         """
-        Load the CSV, remove duplicates, convert relevant columns to strings, and clean up data.
-        Saves the cleaned CSV back to the same path, then returns the Pandas DataFrame.
-
-        :return: A Pandas DataFrame containing cleaned movie data.
+        Cleans and normalizes movie data from the CSV file, removing duplicates and standardizing fields.
+        
+        Loads the CSV, removes duplicate records based on movie name and date, fills missing values in key columns with "Unknown", normalizes string fields (such as crew, genre, language, and status), converts date strings to date objects, and saves the cleaned data back to the original CSV file. Returns the cleaned data as a Pandas DataFrame.
+        
+        Returns:
+            A Pandas DataFrame containing the cleaned and preprocessed movie data.
         """
         data = pd.read_csv(self._csv_file_path)
         data = data.drop_duplicates(subset=["names", "date_x"], keep="first")
@@ -94,11 +97,9 @@ class CSVDatabaseSeeder:
 
     async def _seed_user_groups(self) -> None:
         """
-        Seed the UserGroupModel table with default user groups if none exist.
-
-        This method checks whether any user groups are already present in the database.
-        If no records are found, it inserts all groups defined in the UserGroupEnum.
-        After insertion, the changes are flushed to the current transaction.
+        Inserts default user groups into the database if none exist.
+        
+        Checks for existing user groups and, if absent, adds all groups defined in UserGroupEnum.
         """
         count_stmt = select(func.count(UserGroupModel.id))
         result = await self._db_session.execute(count_stmt)
@@ -117,15 +118,18 @@ class CSVDatabaseSeeder:
         self, model, items: List[str], unique_field: str
     ) -> Dict[str, object]:
         """
-        For a given model and a list of item names/keys (e.g., a list of genres),
-        retrieves any existing records in the database matching these items.
-        If some items are not found, they are created in bulk. Returns a dictionary
-        mapping the item string to the corresponding model instance.
-
-        :param model: The SQLAlchemy model class (e.g., GenreModel).
-        :param items: A list of string values to create or retrieve (e.g., ["Comedy", "Action"]).
-        :param unique_field: The field name that should be unique (e.g., "name").
-        :return: A dict mapping each item to its model instance.
+        Retrieves or creates model instances for a list of unique string items in bulk.
+        
+        For the specified model and list of item strings, fetches existing records by unique field.
+        Creates missing records in bulk, then returns a dictionary mapping each item string to its model instance.
+        
+        Args:
+            model: The SQLAlchemy model class to query and insert.
+            items: List of unique string values to retrieve or create.
+            unique_field: The model attribute name that uniquely identifies each item.
+        
+        Returns:
+            A dictionary mapping each item string to its corresponding model instance.
         """
         existing_dict: Dict[str, object] = {}
 
@@ -169,10 +173,11 @@ class CSVDatabaseSeeder:
         self, table, data_list: List[Dict[str, int]]
     ) -> None:
         """
-        Insert data_list into the given table in chunks, displaying progress via tqdm.
-
-        :param table: The SQLAlchemy table or model to insert into.
-        :param data_list: A list of dictionaries, where each dict represents a row to insert.
+        Inserts a list of records into the specified table in chunks, showing progress with a progress bar.
+        
+        Args:
+            table: The SQLAlchemy table or model to insert records into.
+            data_list: List of dictionaries, each representing a row to insert.
         """
         total_records = len(data_list)
         if total_records == 0:
@@ -199,12 +204,14 @@ class CSVDatabaseSeeder:
         Dict[str, LanguageModel],
     ]:
         """
-        Gather unique values for countries, genres, actors, and languages from the DataFrame.
-        Then call _get_or_create_bulk for each to ensure they exist in the database.
-
-        :param data: The preprocessed Pandas DataFrame containing movie info.
-        :return: A tuple of four dictionaries:
-                 (country_map, genre_map, actor_map, language_map).
+        Extracts unique countries, genres, actors, and languages from the DataFrame and ensures corresponding database records exist.
+        
+        Args:
+            data: The preprocessed Pandas DataFrame containing movie information.
+        
+        Returns:
+            A tuple of four dictionaries mapping string values to their respective model instances:
+            (country_map, genre_map, actor_map, language_map).
         """
         countries = list(data["country"].unique())
         genres = {
@@ -250,11 +257,14 @@ class CSVDatabaseSeeder:
         self, data: pd.DataFrame, country_map: Dict[str, CountryModel]
     ) -> List[Dict[str, object]]:
         """
-        Build a list of dictionaries representing movie records to be inserted into MovieModel.
-
-        :param data: The preprocessed DataFrame.
-        :param country_map: A mapping of country codes to CountryModel instances.
-        :return: A list of dictionaries, each representing a new movie record.
+        Constructs a list of dictionaries representing movie records for database insertion.
+        
+        Args:
+            data: The preprocessed DataFrame containing movie information.
+            country_map: Maps country names to their corresponding CountryModel instances.
+        
+        Returns:
+            A list of dictionaries, each containing the fields required to create a MovieModel record, including resolved country IDs.
         """
         movies_data: List[Dict[str, object]] = []
         for _, row in tqdm(
@@ -285,17 +295,22 @@ class CSVDatabaseSeeder:
         List[Dict[str, int]], List[Dict[str, int]], List[Dict[str, int]]
     ]:
         """
-        Prepare three lists of dictionaries: movie-genre, movie-actor, and movie-language
-        associations for all movies in the DataFrame.
-
-        :param data: The DataFrame containing movie info.
-        :param movie_ids: The list of newly inserted movie IDs, in the same order as DataFrame rows.
-        :param genre_map: A mapping of genre names to GenreModel instances.
-        :param actor_map: A mapping of actor names to ActorModel instances.
-        :param language_map: A mapping of language names to LanguageModel instances.
-        :return: A tuple of three lists:
-                 (movie_genres_data, movie_actors_data, movie_languages_data),
-                 each containing dictionaries for bulk insertion.
+        Creates bulk association records linking movies to genres, actors, and languages.
+        
+        Given a DataFrame of movies and their corresponding database IDs, generates lists of dictionaries representing many-to-many relationships between movies and genres, actors, and languages for bulk insertion.
+        
+        Args:
+            data: DataFrame containing movie information.
+            movie_ids: List of movie IDs corresponding to the DataFrame rows.
+            genre_map: Mapping from genre names to GenreModel instances.
+            actor_map: Mapping from actor names to ActorModel instances.
+            language_map: Mapping from language names to LanguageModel instances.
+        
+        Returns:
+            A tuple of three lists:
+                - Movie-genre association dictionaries.
+                - Movie-actor association dictionaries.
+                - Movie-language association dictionaries.
         """
         movie_genres_data: List[Dict[str, int]] = []
         movie_actors_data: List[Dict[str, int]] = []
@@ -338,9 +353,9 @@ class CSVDatabaseSeeder:
 
     async def seed(self) -> None:
         """
-        Main method to seed the database with movie data from the CSV.
-        It pre-processes the CSV, prepares reference data (countries, genres, actors, languages),
-        inserts all movies, then inserts many-to-many relationships (genres, actors, languages).
+        Seeds the database with movie data and related entities from the CSV file.
+        
+        This method preprocesses the CSV data, ensures reference entities (countries, genres, actors, languages, user groups) exist, inserts movie records, and creates many-to-many associations for genres, actors, and languages. Commits the transaction upon success or raises exceptions on failure.
         """
         try:
             if self._db_session.in_transaction():
@@ -385,8 +400,9 @@ class CSVDatabaseSeeder:
 
 async def main() -> None:
     """
-    The main async entry point for running the database seeder.
-    Checks if the database is already populated, and if not, performs the seeding process.
+    Asynchronously runs the database seeder if the database is not already populated.
+    
+    Checks for existing movie records and, if absent, executes the seeding process using the CSV file and prints the outcome.
     """
     settings = get_settings()
     async with get_db_contextmanager() as db_session:

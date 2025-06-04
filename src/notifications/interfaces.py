@@ -6,43 +6,43 @@ class EmailSenderInterface(ABC):
     @abstractmethod
     async def send_activation_email(self, email: str, activation_link: str) -> None:
         """
-        Asynchronously send an account activation email.
-
+        Asynchronously sends an account activation email to the specified recipient.
+        
         Args:
-            email (str): The recipient's email address.
-            activation_link (str): The activation link to include in the email.
+            email: The recipient's email address.
+            activation_link: The activation link to include in the email.
         """
         pass
 
     @abstractmethod
     async def send_activation_complete_email(self, email: str, login_link: str) -> None:
         """
-        Asynchronously send an email confirming that the account has been activated.
-
+        Asynchronously sends an email confirming successful account activation.
+        
         Args:
-            email (str): The recipient's email address.
-            login_link (str): The login link to include in the email.
+            email: Recipient's email address.
+            login_link: Link for the user to log in after activation.
         """
         pass
 
     @abstractmethod
     async def send_password_reset_email(self, email: str, reset_link: str) -> None:
         """
-        Asynchronously send a password reset request email.
-
+        Asynchronously sends a password reset email to the specified recipient.
+        
         Args:
-            email (str): The recipient's email address.
-            reset_link (str): The password reset link to include in the email.
+            email: The recipient's email address.
+            reset_link: The password reset link to include in the email.
         """
         pass
 
     @abstractmethod
     async def send_password_reset_complete_email(self, email: str, login_link: str) -> None:
         """
-        Asynchronously send an email confirming that the password has been reset.
-
+        Asynchronously sends a confirmation email indicating that the password reset process is complete.
+        
         Args:
-            email (str): The recipient's email address.
-            login_link (str): The login link to include in the email.
+            email: The recipient's email address.
+            login_link: The login link to include in the email.
         """
         pass

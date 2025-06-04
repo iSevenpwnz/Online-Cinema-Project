@@ -37,6 +37,12 @@ class BaseAppSettings(BaseSettings):
 
     @property
     def S3_STORAGE_ENDPOINT(self) -> str:
+        """
+        Constructs the HTTP endpoint URL for the configured S3-compatible storage service.
+        
+        Returns:
+            The full HTTP URL for accessing the S3 storage endpoint, including host and port.
+        """
         return f"http://{self.S3_STORAGE_HOST}:{self.S3_STORAGE_PORT}"
 
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "test_user")
@@ -64,6 +70,11 @@ class TestingSettings(BaseAppSettings):
     JWT_SIGNING_ALGORITHM: str = "HS256"
 
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
+        """
+        Overrides database and CSV file paths for testing after model initialization.
+        
+        Sets the database path to an in-memory SQLite database and the movies CSV path to a test-specific file within the seed data directory.
+        """
         object.__setattr__(self, 'PATH_TO_DB', ":memory:")
         object.__setattr__(
             self,

@@ -48,24 +48,10 @@ async def get_movie_list(
         db: AsyncSession = Depends(get_db),
 ) -> MovieListResponseSchema:
     """
-    Fetch a paginated list of movies from the database (asynchronously).
-
-    This function retrieves a paginated list of movies, allowing the client to specify
-    the page number and the number of items per page. It calculates the total pages
-    and provides links to the previous and next pages when applicable.
-
-    :param page: The page number to retrieve (1-based index, must be >= 1).
-    :type page: int
-    :param per_page: The number of items to display per page (must be between 1 and 20).
-    :type per_page: int
-    :param db: The async SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :return: A response containing the paginated list of movies and metadata.
-    :rtype: MovieListResponseSchema
-
-    :raises HTTPException: Raises a 404 error if no movies are found for the requested page.
-    """
+        Retrieves a paginated list of movies with metadata and navigation links.
+        
+        Returns a response containing the current page of movies, total items, total pages, and links to previous and next pages if applicable. Raises a 404 error if no movies exist or if the requested page is empty.
+        """
     offset = (page - 1) * per_page
 
     count_stmt = select(func.count(MovieModel.id))
@@ -132,24 +118,14 @@ async def create_movie(
         db: AsyncSession = Depends(get_db)
 ) -> MovieDetailSchema:
     """
-    Add a new movie to the database.
-
-    This endpoint allows the creation of a new movie with details such as
-    name, release date, genres, actors, and languages. It automatically
-    handles linking or creating related entities.
-
-    :param movie_data: The data required to create a new movie.
-    :type movie_data: MovieCreateSchema
-    :param db: The SQLAlchemy async database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :return: The created movie with all details.
-    :rtype: MovieDetailSchema
-
-    :raises HTTPException:
-        - 409 if a movie with the same name and date already exists.
-        - 400 if input data is invalid (e.g., violating a constraint).
-    """
+        Creates a new movie entry with associated details and related entities.
+        
+        Checks for existing movies with the same name and release date to prevent duplicates. If related entities such as country, genres, actors, or languages do not exist, they are created and linked to the new movie. Returns the complete details of the created movie.
+        
+        Raises:
+            HTTPException: 409 if a movie with the same name and date exists.
+            HTTPException: 400 if input data is invalid.
+        """
     existing_stmt = select(MovieModel).where(
         (MovieModel.name == movie_data.name),
         (MovieModel.date == movie_data.date)
@@ -261,21 +237,13 @@ async def get_movie_by_id(
         db: AsyncSession = Depends(get_db),
 ) -> MovieDetailSchema:
     """
-    Retrieve detailed information about a specific movie by its ID.
-
-    This function fetches detailed information about a movie identified by its unique ID.
-    If the movie does not exist, a 404 error is returned.
-
-    :param movie_id: The unique identifier of the movie to retrieve.
-    :type movie_id: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :return: The details of the requested movie.
-    :rtype: MovieDetailResponseSchema
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-    """
+        Retrieves detailed information about a movie by its unique ID.
+        
+        Raises a 404 error if the movie is not found.
+        
+        Returns:
+            The detailed schema of the requested movie.
+        """
     stmt = (
         select(MovieModel)
         .options(
@@ -327,21 +295,10 @@ async def delete_movie(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Delete a specific movie by its ID.
-
-    This function deletes a movie identified by its unique ID.
-    If the movie does not exist, a 404 error is raised.
-
-    :param movie_id: The unique identifier of the movie to delete.
-    :type movie_id: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-
-    :return: A response indicating the successful deletion of the movie.
-    :rtype: None
-    """
+        Deletes a movie by its unique ID.
+        
+        Raises a 404 error if the movie does not exist. Returns a success message upon successful deletion.
+        """
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
     result = await db.execute(stmt)
     movie = result.scalars().first()
@@ -391,23 +348,10 @@ async def update_movie(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Update a specific movie by its ID.
-
-    This function updates a movie identified by its unique ID.
-    If the movie does not exist, a 404 error is raised.
-
-    :param movie_id: The unique identifier of the movie to update.
-    :type movie_id: int
-    :param movie_data: The updated data for the movie.
-    :type movie_data: MovieUpdateSchema
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-
-    :return: A response indicating the successful update of the movie.
-    :rtype: None
-    """
+        Updates an existing movie by its ID with the provided partial data.
+        
+        Raises a 404 error if the movie does not exist. Returns a success message upon successful update. Raises a 400 error if input data is invalid.
+        """
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
     result = await db.execute(stmt)
     movie = result.scalars().first()

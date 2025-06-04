@@ -16,7 +16,7 @@ from database import (
 @pytest.mark.asyncio
 async def test_get_movies_empty_database(client):
     """
-    Test that the `/movies/` endpoint returns a 404 error when the database is empty.
+    Verifies that the `/movies/` endpoint returns a 404 error with an appropriate message when no movies exist in the database.
     """
     response = await client.get("/api/v1/theater/movies/")
     assert response.status_code == 404, f"Expected 404, got {response.status_code}"
@@ -28,7 +28,9 @@ async def test_get_movies_empty_database(client):
 @pytest.mark.asyncio
 async def test_get_movies_default_parameters(client, seed_database):
     """
-    Test the `/movies/` endpoint with default pagination parameters.
+    Verifies that the `/movies/` endpoint returns the first page of movies with default pagination.
+    
+    Asserts that the response contains 10 movies, positive total pages and items, `prev_page` is None, and `next_page` is present if there are multiple pages.
     """
     response = await client.get("/api/v1/theater/movies/")
     assert response.status_code == 200, "Expected status code 200, but got a different value"
@@ -51,7 +53,9 @@ async def test_get_movies_default_parameters(client, seed_database):
 @pytest.mark.asyncio
 async def test_get_movies_with_custom_parameters(client, seed_database):
     """
-    Test the `/movies/` endpoint with custom pagination parameters.
+    Verifies that the `/movies/` endpoint returns correct results with custom pagination parameters.
+    
+    Sends a GET request with specified `page` and `per_page` values, asserting the response contains the expected number of movies, valid pagination metadata, and correct `prev_page` and `next_page` URLs or None when appropriate.
     """
     page = 2
     per_page = 5
@@ -92,7 +96,9 @@ async def test_get_movies_with_custom_parameters(client, seed_database):
 ])
 async def test_invalid_page_and_per_page(client, page, per_page, expected_detail):
     """
-    Test the `/movies/` endpoint with invalid `page` and `per_page` parameters.
+    Tests that the `/movies/` endpoint returns a 422 error for invalid `page` or `per_page` values.
+    
+    Verifies that the response includes an appropriate error message indicating the invalid parameter.
     """
     response = await client.get(f"/api/v1/theater/movies/?page={page}&per_page={per_page}")
 
@@ -112,7 +118,9 @@ async def test_invalid_page_and_per_page(client, page, per_page, expected_detail
 @pytest.mark.asyncio
 async def test_per_page_maximum_allowed_value(client, seed_database):
     """
-    Test the `/movies/` endpoint with the maximum allowed `per_page` value.
+    Verifies that the `/movies/` endpoint returns no more than 20 movies when `per_page=20` is specified.
+    
+    Ensures the API enforces the maximum allowed page size and includes the "movies" field in the response.
     """
     response = await client.get("/api/v1/theater/movies/?page=1&per_page=20")
 
@@ -129,7 +137,7 @@ async def test_per_page_maximum_allowed_value(client, seed_database):
 @pytest.mark.asyncio
 async def test_page_exceeds_maximum(client, db_session, seed_database):
     """
-    Test the `/movies/` endpoint with a page number that exceeds the maximum.
+    Tests that requesting a page number beyond the maximum available in the `/movies/` endpoint returns a 404 status and an appropriate error detail.
     """
     per_page = 10
 
@@ -150,8 +158,9 @@ async def test_page_exceeds_maximum(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_movies_sorted_by_id_desc(client, db_session, seed_database):
     """
-    Test that movies are returned sorted by `id` in descending order
-    and match the expected data from the database.
+    Verifies that the `/movies/` endpoint returns movies sorted by `id` in descending order.
+    
+    Checks that the list of movies in the response matches the expected order and content from the database for the first page with 10 items.
     """
     response = await client.get("/api/v1/theater/movies/?page=1&per_page=10")
 
@@ -175,13 +184,9 @@ async def test_movies_sorted_by_id_desc(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_movie_list_with_pagination(client, db_session, seed_database):
     """
-    Test the `/movies/` endpoint with pagination parameters.
-
-    Verifies the following:
-    - The response status code is 200.
-    - Total items and total pages match the expected values from the database.
-    - The movies returned match the expected movies for the given page and per_page.
-    - The `prev_page` and `next_page` links are correct.
+    Tests the `/movies/` endpoint with pagination, verifying correct items, pages, and navigation links.
+    
+    Checks that the response status is 200, total items and pages match the database, the returned movies correspond to the requested page, and `prev_page` and `next_page` URLs are accurate.
     """
     page = 2
     per_page = 5
@@ -225,7 +230,9 @@ async def test_movie_list_with_pagination(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_movies_fields_match_schema(client, db_session, seed_database):
     """
-    Test that each movie in the response matches the fields defined in `MovieListItemSchema`.
+    Verifies that each movie returned by the API contains only the fields defined in the movie list schema.
+    
+    Ensures that the response for the movies list endpoint includes movies with exactly the expected fields: `id`, `name`, `date`, `score`, and `overview`.
     """
     response = await client.get("/api/v1/theater/movies/?page=1&per_page=10")
 
@@ -247,8 +254,7 @@ async def test_movies_fields_match_schema(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_get_movie_by_id_not_found(client):
     """
-    Test that the `/movies/{movie_id}` endpoint returns a 404 error
-    when a movie with the given ID does not exist.
+    Verifies that requesting a non-existent movie by ID returns a 404 error with the appropriate detail message.
     """
     movie_id = 1
 
@@ -264,13 +270,9 @@ async def test_get_movie_by_id_not_found(client):
 @pytest.mark.asyncio
 async def test_get_movie_by_id_valid(client, db_session, seed_database):
     """
-    Test that the `/movies/{movie_id}` endpoint returns the correct movie details
-    when a valid movie ID is provided.
-
-    Verifies the following:
-    - The movie exists in the database.
-    - The response status code is 200.
-    - The movie's `id` and `name` in the response match the expected values from the database.
+    Tests that retrieving a movie by a valid ID returns the correct movie details.
+    
+    Selects a random valid movie ID from the database, requests its details from the API, and asserts that the response status is 200 and the returned `id` and `name` match the database record.
     """
     stmt_min = select(MovieModel.id).order_by(MovieModel.id.asc()).limit(1)
     result_min = await db_session.execute(stmt_min)
@@ -299,7 +301,9 @@ async def test_get_movie_by_id_valid(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_get_movie_by_id_fields_match_database(client, db_session, seed_database):
     """
-    Test that the `/movies/{movie_id}` endpoint returns all fields matching the database data.
+    Verifies that the `/movies/{movie_id}` endpoint returns all movie fields and related data matching the database record.
+    
+    This test checks that the API response for a specific movie includes correct values for all scalar fields and nested related entities (country, genres, actors, languages) as stored in the database.
     """
     stmt = (
         select(MovieModel)
@@ -358,8 +362,9 @@ async def test_get_movie_by_id_fields_match_database(client, db_session, seed_da
 @pytest.mark.asyncio
 async def test_create_movie_and_related_models(client, db_session):
     """
-    Test that a new movie is created successfully and related models
-    (genres, actors, languages) are created if they do not exist.
+    Tests that creating a new movie via the API also creates related genres, actors, languages, and country records if they do not already exist.
+    
+    Verifies that the response contains the correct movie data and that all specified related entities are present in the database after creation.
     """
     movie_data = {
         "name": "New Movie",
@@ -411,8 +416,9 @@ async def test_create_movie_and_related_models(client, db_session):
 @pytest.mark.asyncio
 async def test_create_movie_duplicate_error(client, db_session, seed_database):
     """
-    Test that trying to create a movie with the same name and date as an existing movie
-    results in a 409 conflict error.
+    Verifies that creating a movie with a duplicate name and release date returns a 409 conflict error.
+    
+    Ensures the API prevents creation of movies with the same name and date as an existing entry, and returns the appropriate error message.
     """
     stmt = select(MovieModel).limit(1)
     result = await db_session.execute(stmt)
@@ -448,7 +454,7 @@ async def test_create_movie_duplicate_error(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_delete_movie_success(client, db_session, seed_database):
     """
-    Test the `/movies/{movie_id}/` endpoint for successful movie deletion.
+    Verifies that deleting an existing movie via the `/movies/{movie_id}/` endpoint returns a 204 status and removes the movie from the database.
     """
     stmt = select(MovieModel).limit(1)
     result = await db_session.execute(stmt)
@@ -469,7 +475,7 @@ async def test_delete_movie_success(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_delete_movie_not_found(client):
     """
-    Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
+    Tests that deleting a non-existent movie returns a 404 status and appropriate error detail.
     """
     non_existent_id = 99999
 
@@ -486,7 +492,9 @@ async def test_delete_movie_not_found(client):
 @pytest.mark.asyncio
 async def test_update_movie_success(client, db_session, seed_database):
     """
-    Test the `/movies/{movie_id}/` endpoint for successfully updating a movie's details.
+    Tests that updating an existing movie via the `/movies/{movie_id}/` endpoint succeeds.
+    
+    Verifies that the movie's details are updated in the database and the API returns a success message.
     """
     stmt = select(MovieModel).limit(1)
     result = await db_session.execute(stmt)
@@ -520,7 +528,7 @@ async def test_update_movie_success(client, db_session, seed_database):
 @pytest.mark.asyncio
 async def test_update_movie_not_found(client):
     """
-    Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
+    Verifies that updating a non-existent movie returns a 404 status and appropriate error message.
     """
     non_existent_id = 99999
     update_data = {
