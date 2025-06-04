@@ -1,5 +1,7 @@
 [![codecov](https://codecov.io/gh/iSevenpwnz/Online-Cinema-Project/branch/main/graph/badge.svg)](https://codecov.io/gh/iSevenpwnz/Online-Cinema-Project)
 
+
+add a ai check PR
 # Online Cinema Project
 
 <!-- решта твого README.md нижче -->
