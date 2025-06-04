@@ -1,19 +1,21 @@
 [tool.poetry]
-name = "online-cinema"
+name = "src"
 version = "0.1.0"
-description = "Online Cinema FastAPI project"
-authors = ["Mykhailo Safronov <isevenpwnz@gmail.com>"]
-
+description = "Mate task for first lesson"
+authors = ["Yurii Okal <yurii.okal@mate.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.115.6"
 sqlalchemy = "^2.0.36"
+pytest = "^8.3.4"
 pydantic-settings = "^2.7.0"
 pandas = "^2.2.3"
 tqdm = "^4.67.1"
 uvicorn = "^0.34.0"
 httpx = "^0.28.1"
+pytest-env = "^1.1.5"
+flake8 = "^7.1.1"
 psycopg2-binary = "^2.9.10"
 alembic = "^1.14.0"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
@@ -21,6 +23,7 @@ python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 email-validator = "^2.2.0"
 bcrypt = "4.0.1"
 jinja2 = "^3.1.5"
+pytest-order = "^1.3.0"
 beautifulsoup4 = "^4.12.3"
 validators = "^0.34.0"
 botocore = "^1.35.99"
@@ -30,17 +33,9 @@ aiosmtplib = "^4.0.0"
 asyncpg = "^0.30.0"
 aiosqlite = "^0.21.0"
 aioboto3 = "^13.4.0"
+pytest-asyncio = "^0.25.3"
 gunicorn = "^23.0.0"
 
-[tool.poetry.group.dev.dependencies]
-flake8 = "^7.1.1"
-mypy = "^1.9.0"
-pytest = "^8.3.4"
-pytest-env = "^1.1.5"
-pytest-order = "^1.3.0"
-pytest-cov = "^5.0.0"
-pytest-asyncio = "^0.25.3"
-coverage = "^7.4.4"
 
 [build-system]
 requires = ["poetry-core"]
