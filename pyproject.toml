@@ -41,6 +41,9 @@ validators = "^0.34.0"
 [tool.poetry.group.dev.dependencies]
 types-passlib = "*"
 types-python-jose = "*"
+types-jmespath = "^1.0.2.20250529"
+pandas-stubs = "^2.2.3.250527"
+types-tqdm = "^4.67.0.20250516"
 [[tool.mypy.overrides]]
 module = "aioboto3.*"
 ignore_missing_imports = true
@@ -48,8 +51,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "botocore.*"
 ignore_missing_imports = true
-pandas-stubs = "*"
-types-tqdm = "*"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

@@ -84,12 +84,7 @@ class MovieDetailSchema(MovieBaseSchema):
     languages: List[LanguageSchema]
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_detail_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
 
@@ -101,12 +96,7 @@ class MovieListItemSchema(BaseModel):
     overview: str
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_item_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
 
@@ -118,12 +108,7 @@ class MovieListResponseSchema(BaseModel):
     total_items: int
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_list_response_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
 
@@ -141,12 +126,7 @@ class MovieCreateSchema(BaseModel):
     languages: List[str]
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_create_schema_example
-            ]
-        }
+        "from_attributes": True
     }
 
     @field_validator("country", mode="before")
@@ -170,10 +150,5 @@ class MovieUpdateSchema(BaseModel):
     revenue: Optional[float] = Field(None, ge=0)
 
     model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_update_schema_example
-            ]
-        }
+        "from_attributes": True
     }
