@@ -38,7 +38,7 @@ sqlalchemy = "^2.0.36"
 tqdm = "^4.67.1"
 uvicorn = "^0.34.0"
 validators = "^0.34.0"
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 types-passlib = "*"
 types-python-jose = "*"
 pandas-stubs = "*"
