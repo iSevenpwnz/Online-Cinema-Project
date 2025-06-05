@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import UploadFile, Form, File, HTTPException
+from fastapi import UploadFile
 from pydantic import BaseModel, field_validator, HttpUrl
 
 from validation import (
