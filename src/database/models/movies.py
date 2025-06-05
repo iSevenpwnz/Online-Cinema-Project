@@ -26,7 +26,12 @@ movie_genres = Table(
         ForeignKey("movies.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    Column("genre_id", Integer, ForeignKey("genres.id"), primary_key=True),
+    Column(
+        "genre_id",
+        Integer,
+        ForeignKey("genres.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 movie_directors = Table(
@@ -39,7 +44,10 @@ movie_directors = Table(
         primary_key=True,
     ),
     Column(
-        "director_id", Integer, ForeignKey("directors.id"), primary_key=True
+        "director_id",
+        Integer,
+        ForeignKey("directors.id", ondelete="CASCADE"),
+        primary_key=True,
     ),
 )
 
@@ -52,7 +60,12 @@ movie_stars = Table(
         ForeignKey("movies.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    Column("star_id", Integer, ForeignKey("stars.id"), primary_key=True),
+    Column(
+        "star_id",
+        Integer,
+        ForeignKey("stars.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 

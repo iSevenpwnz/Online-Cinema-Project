@@ -63,7 +63,16 @@ class CSVDatabaseSeeder:
         data = pd.read_csv(self._csv_file_path)
         data = data.drop_duplicates(subset=["names", "date_x"], keep="first")
 
-        for col in ["crew", "genre", "country", "orig_lang", "status"]:
+        for col in [
+            "crew",
+            "genre",
+            "country",
+            "orig_lang",
+            "status",
+            "director",
+        ]:
+            if col not in data.columns:
+                data[col] = "Unknown"
             data[col] = data[col].fillna("Unknown").astype(str)
 
         data["crew"] = (
@@ -88,6 +97,7 @@ class CSVDatabaseSeeder:
             r"\s+", "", regex=True
         )
         data["status"] = data["status"].str.strip()
+        data["director"] = data["director"].str.strip()
 
         print("Preprocessing CSV file...")
         data.to_csv(self._csv_file_path, index=False)
@@ -210,10 +220,8 @@ class CSVDatabaseSeeder:
         Dict[str, str],
         Dict[str, GenreModel],
         Dict[str, StarModel],
+        Dict[str, DirectorModel],
     ]:
-        """
-        Збирає унікальні значення для країн (як str), жанрів (GenreModel), акторів (StarModel) з DataFrame.
-        """
         countries = list(data["country"].unique())
         genres = {
             genre.strip()
@@ -227,6 +235,12 @@ class CSVDatabaseSeeder:
             for star in crew.split(",")
             if star.strip()
         }
+        directors = {
+            director.strip()
+            for directors_ in data["director"].dropna()
+            for director in directors_.split(",")
+            if director.strip()
+        }
         country_map = {country: country for country in countries}
         genre_map = await self._get_or_create_bulk(
             GenreModel, list(genres), "name"
@@ -234,10 +248,14 @@ class CSVDatabaseSeeder:
         star_map = await self._get_or_create_bulk(
             StarModel, list(stars), "name"
         )
+        director_map = await self._get_or_create_bulk(
+            DirectorModel, list(directors), "name"
+        )
         return (
             cast(Dict[str, str], country_map),
             cast(Dict[str, GenreModel], genre_map),
             cast(Dict[str, StarModel], star_map),
+            cast(Dict[str, DirectorModel], director_map),
         )
 
     def _prepare_movies_data(
@@ -296,9 +314,13 @@ class CSVDatabaseSeeder:
         movie_ids: List[int],
         genre_map: Dict[str, GenreModel],
         star_map: Dict[str, StarModel],
-    ) -> Tuple[List[Dict[str, int]], List[Dict[str, int]]]:
+        director_map: Dict[str, DirectorModel],
+    ) -> Tuple[
+        List[Dict[str, int]], List[Dict[str, int]], List[Dict[str, int]]
+    ]:
         movie_genres_data: List[Dict[str, int]] = []
         movie_stars_data: List[Dict[str, int]] = []
+        movie_directors_data: List[Dict[str, int]] = []
         for i, (_, row) in enumerate(
             tqdm(
                 data.iterrows(),
@@ -321,7 +343,19 @@ class CSVDatabaseSeeder:
                     movie_stars_data.append(
                         {"movie_id": movie_id, "star_id": star.id}
                     )
-        return movie_genres_data, movie_stars_data
+            directors_str = (
+                row["director"]
+                if "director" in row and not pd.isna(row["director"])
+                else ""
+            )
+            for director_name in directors_str.split(","):
+                director_name = director_name.strip()
+                if director_name and director_name in director_map:
+                    director = director_map[director_name]
+                    movie_directors_data.append(
+                        {"movie_id": movie_id, "director_id": director.id}
+                    )
+        return movie_genres_data, movie_stars_data, movie_directors_data
 
     async def seed(self) -> None:
         """
@@ -339,11 +373,10 @@ class CSVDatabaseSeeder:
 
             data = self._preprocess_csv()
 
-            country_map, genre_map, star_map = (
+            country_map, genre_map, star_map, director_map = (
                 await self._prepare_reference_data(data)
             )
 
-            # Отримуємо реальний certification_id для GENERAL_AUDIENCE ("G")
             cert_result = await self._db_session.execute(
                 select(CertificationModel.id).where(
                     CertificationModel.name
@@ -361,12 +394,15 @@ class CSVDatabaseSeeder:
             )
             movie_ids = list(result.scalars().all())
 
-            movie_genres_data, movie_stars_data = self._prepare_associations(
-                data, movie_ids, genre_map, star_map
+            movie_genres_data, movie_stars_data, movie_directors_data = (
+                self._prepare_associations(
+                    data, movie_ids, genre_map, star_map, director_map
+                )
             )
 
             await self._bulk_insert(movie_genres, movie_genres_data)
             await self._bulk_insert(movie_stars, movie_stars_data)
+            await self._bulk_insert(movie_directors, movie_directors_data)
 
             await self._db_session.commit()
             print("Seeding completed.")
