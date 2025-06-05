@@ -3,8 +3,8 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database.models.shopping_cart import Cart, CartItem
-from database.models.movies import MovieModel
-from database.models.accounts import UserModel
+from database.models.movies import MovieModel, CountryModel, MovieStatusEnum
+from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
 from database.models.base import Base
 
 
@@ -35,11 +35,19 @@ def session(engine, tables):
 
 
 @pytest.fixture
-def user(session):
-    user = UserModel(
+def user_group(session):
+    group = UserGroupModel(name=UserGroupEnum.USER)
+    session.add(group)
+    session.commit()
+    return group
+
+
+@pytest.fixture
+def user(session, user_group):
+    user = UserModel.create(
         email="test@example.com",
-        username="testuser",
-        hashed_password="hashed_password"
+        raw_password="TestPassword1!",
+        group_id=user_group.id
     )
     session.add(user)
     session.commit()
@@ -47,13 +55,24 @@ def user(session):
 
 
 @pytest.fixture
-def movie(session):
+def country(session):
+    country = CountryModel(code="USA", name="United States")
+    session.add(country)
+    session.commit()
+    return country
+
+
+@pytest.fixture
+def movie(session, country):
     movie = MovieModel(
-        title="Test Movie",
-        description="Test Description",
-        release_year=2024,
-        duration=120,
-        rating=8.5
+        name="Test Movie",
+        date=datetime(2024, 1, 1).date(),
+        overview="Test Description",
+        score=8.5,
+        status=MovieStatusEnum.RELEASED,
+        budget=1000000.0,
+        revenue=2000000.0,
+        country_id=country.id
     )
     session.add(movie)
     session.commit()
@@ -115,7 +134,7 @@ class TestCart:
 
         assert session.query(CartItem).filter_by(id=cart_item.id).first() is None
 
-    def test_cart_with_multiple_items(self, session, user):
+    def test_cart_with_multiple_items(self, session, user, country):
         cart = Cart(user_id=user.id)
         session.add(cart)
         session.commit()
@@ -123,16 +142,18 @@ class TestCart:
         movies = []
         for i in range(3):
             movie = MovieModel(
-                title=f"Test Movie {i}",
-                description=f"Test Description {i}",
-                release_year=2024,
-                duration=120,
-                rating=8.5
+                name=f"Test Movie {i}",
+                date=datetime(2024, 1, 1).date(),
+                overview=f"Test Description {i}",
+                score=8.5,
+                status=MovieStatusEnum.RELEASED,
+                budget=1000000.0,
+                revenue=2000000.0,
+                country_id=country.id
             )
             session.add(movie)
             movies.append(movie)
         session.commit()
-
 
         for movie in movies:
             cart_item = CartItem(cart_id=cart.id, movie_id=movie.id)
