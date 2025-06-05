@@ -432,7 +432,49 @@ async def update_movie(
         )
 
     for field, value in movie_data.model_dump(exclude_unset=True).items():
-        setattr(movie, field, value)
+        if field == "genres" and value is not None:
+            genres = []
+            for genre_name in value:
+                genre_result = await db.execute(
+                    select(GenreModel).where(GenreModel.name == genre_name)
+                )
+                genre = genre_result.scalars().first()
+                if not genre:
+                    genre = GenreModel(name=genre_name)
+                    db.add(genre)
+                    await db.flush()
+                genres.append(genre)
+            movie.genres = genres
+        elif field == "stars" and value is not None:
+            stars = []
+            for star_name in value:
+                star_result = await db.execute(
+                    select(StarModel).where(StarModel.name == star_name)
+                )
+                star = star_result.scalars().first()
+                if not star:
+                    star = StarModel(name=star_name)
+                    db.add(star)
+                    await db.flush()
+                stars.append(star)
+            movie.stars = stars
+        elif field == "directors" and value is not None:
+            directors = []
+            for director_name in value:
+                director_result = await db.execute(
+                    select(DirectorModel).where(
+                        DirectorModel.name == director_name
+                    )
+                )
+                director = director_result.scalars().first()
+                if not director:
+                    director = DirectorModel(name=director_name)
+                    db.add(director)
+                    await db.flush()
+                directors.append(director)
+            movie.directors = directors
+        else:
+            setattr(movie, field, value)
 
     try:
         await db.commit()
