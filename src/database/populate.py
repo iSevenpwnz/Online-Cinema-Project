@@ -23,6 +23,7 @@ from database import (
     UserGroupEnum,
 )
 from database import get_db_contextmanager
+from database.models.movies import CertificationEnum
 
 CHUNK_SIZE = 1000
 
@@ -120,7 +121,9 @@ class CSVDatabaseSeeder:
         existing = result.scalar()
         if existing == 0:
             await self._db_session.execute(
-                insert(CertificationModel).values([{"name": "General"}])
+                insert(CertificationModel).values(
+                    [{"name": cert.value} for cert in CertificationEnum]
+                )
             )
             await self._db_session.flush()
 
@@ -260,7 +263,6 @@ class CSVDatabaseSeeder:
                 "budget": float(row["budget_x"]),
                 "revenue": float(row["revenue"]),
                 "price": 100.0,
-
             }
             movies_data.append(movie)
         return movies_data

@@ -1,27 +1,58 @@
 from decimal import Decimal
+from enum import Enum
 
-from sqlalchemy import Column, Table, Integer, ForeignKey, String, Float, Text, DECIMAL, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Table,
+    Integer,
+    ForeignKey,
+    String,
+    Float,
+    Text,
+    DECIMAL,
+    UniqueConstraint,
+)
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
 
 
 movie_genres = Table(
-    "movie_genres", Base.metadata,
-    Column("movie_id", Integer, ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True),
-    Column("genre_id", Integer, ForeignKey("genres.id"), primary_key=True)
+    "movie_genres",
+    Base.metadata,
+    Column(
+        "movie_id",
+        Integer,
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("genre_id", Integer, ForeignKey("genres.id"), primary_key=True),
 )
 
 movie_directors = Table(
-    "movie_directors", Base.metadata,
-    Column("movie_id", Integer, ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True),
-    Column("director_id", Integer, ForeignKey("directors.id"), primary_key=True)
+    "movie_directors",
+    Base.metadata,
+    Column(
+        "movie_id",
+        Integer,
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "director_id", Integer, ForeignKey("directors.id"), primary_key=True
+    ),
 )
 
 movie_stars = Table(
-    "movie_stars", Base.metadata,
-    Column("movie_id", Integer, ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True),
-    Column("star_id", Integer, ForeignKey("stars.id"), primary_key=True)
+    "movie_stars",
+    Base.metadata,
+    Column(
+        "movie_id",
+        Integer,
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("star_id", Integer, ForeignKey("stars.id"), primary_key=True),
 )
 
 
@@ -32,9 +63,7 @@ class GenreModel(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel",
-        secondary=movie_genres,
-        back_populates="genres"
+        "MovieModel", secondary=movie_genres, back_populates="genres"
     )
 
     def __repr__(self):
@@ -48,9 +77,7 @@ class StarModel(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel",
-        secondary=movie_stars,
-        back_populates="stars"
+        "MovieModel", secondary=movie_stars, back_populates="stars"
     )
 
     def __repr__(self):
@@ -64,16 +91,14 @@ class DirectorModel(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel",
-        secondary=movie_directors,
-        back_populates="directors"
+        "MovieModel", secondary=movie_directors, back_populates="directors"
     )
 
     def __repr__(self):
         return f"Director('{self.name}')"
 
 
-class CertificationEnum(str, SQLAlchemyEnum):
+class CertificationEnum(str, Enum):
     GENERAL_AUDIENCE = "G"
     PARENTAL_GUIDANCE_SUGGESTED = "PG"
     PARENTS_STRONGLY_CAUTIONED = "PG-13"
@@ -85,11 +110,12 @@ class CertificationModel(Base):
     __tablename__ = "certifications"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[CertificationEnum] = mapped_column(SQLAlchemyEnum(CertificationEnum), unique=True, nullable=False)
+    name: Mapped[CertificationEnum] = mapped_column(
+        SQLAlchemyEnum(CertificationEnum), unique=True, nullable=False
+    )
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel",
-        back_populates="certification"
+        "MovieModel", back_populates="certification"
     )
 
     def __repr__(self):
@@ -111,30 +137,27 @@ class MovieModel(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
 
-    certification_id: Mapped[int] = mapped_column(ForeignKey("certifications.id"), nullable=False)
+    certification_id: Mapped[int] = mapped_column(
+        ForeignKey("certifications.id"), nullable=False
+    )
     certification: Mapped["CertificationModel"] = relationship(
-        "CertificationModel",
-        back_populates="movies"
+        "CertificationModel", back_populates="movies"
     )
 
     genres: Mapped[list["GenreModel"]] = relationship(
-        "GenreModel",
-        secondary=movie_genres,
-        back_populates="movies"
+        "GenreModel", secondary=movie_genres, back_populates="movies"
     )
     stars: Mapped[list["StarModel"]] = relationship(
-        "StarModel",
-        secondary=movie_stars,
-        back_populates="movies"
+        "StarModel", secondary=movie_stars, back_populates="movies"
     )
     directors: Mapped[list["DirectorModel"]] = relationship(
-        "DirectorModel",
-        secondary=movie_directors,
-        back_populates="movies"
+        "DirectorModel", secondary=movie_directors, back_populates="movies"
     )
 
     __table_args__ = (
-        UniqueConstraint("name", "year", "time", name="unique_movie_constraint"),
+        UniqueConstraint(
+            "name", "year", "time", name="unique_movie_constraint"
+        ),
     )
 
     @classmethod
