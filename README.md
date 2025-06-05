@@ -7,25 +7,31 @@
 ```
 .
 ├── src/
-│   └── app/
-│       ├── main.py            # Точка входу FastAPI
-│       ├── config.py          # Налаштування (env, конфіг)
-│       ├── db.py              # Підключення до бази даних
-│       ├── core/              # Ядро, утиліти, базові класи
-│       ├── models/            # ORM-моделі (структура таблиць БД)
-│       ├── schemas/           # Pydantic-схеми (валідація, серіалізація)
-│       ├── services/          # Бізнес-логіка (робота з БД, сторонні сервіси)
-│       ├── routes/            # FastAPI endpoints (роутінг)
-│       └── celery/            # Celery таски (фонова обробка)
-├── tests/                     # Тести (unit, інтеграційні)
-├── alembic.ini                # Налаштування Alembic (міграції)
-├── docker-compose.yml         # Docker-оркестрація сервісів
-├── Dockerfile                 # Docker-образ для застосунку
-├── .env.example               # Приклад змінних оточення
-├── .flake8                    # Налаштування flake8 (стиль коду)
-├── pyproject.toml             # Poetry/Nox конфіг, залежності
-├── README.md                  # Документація проєкту
-└── .codecov.yml               # Налаштування Codecov (ігнорування, цілі)
+│   ├── main.py                 # Точка входу FastAPI
+│   ├── config/                 # Налаштування додатку (settings.py, dependencies.py)
+│   ├── database/               # Моделі, міграції, сесії БД, валідатори БД
+│   ├── exceptions/             # Кастомні винятки
+│   ├── notifications/          # Обробка сповіщень (напр., email)
+│   ├── routes/                 # FastAPI ендпоінти (маршрутизація)
+│   ├── schemas/                # Pydantic-схеми (валідація даних)
+│   ├── security/               # Логіка безпеки (автентикація, авторизація, токени)
+│   ├── storages/               # Інтеграція зі сховищами (напр., S3)
+│   ├── tests/                  # Внутрішні тести для src (e2e, integration, doubles)
+│   └── validation/             # Специфічна бізнес-валідація
+├── tests/                      # Тести на верхньому рівні (unit)
+├── alembic.ini                 # Налаштування Alembic (міграції БД)
+├── commands/                   # Допоміжні скрипти (deploy, run_migrations і т.д.)
+├── configs/                    # Конфігурації для зовнішніх сервісів (напр., nginx)
+├── docker/                     # Dockerfiles для різних компонентів (mailhog, minio_mc, nginx, tests)
+├── docker-compose-dev.yml      # Docker Compose для середовища розробки
+├── docker-compose-prod.yml     # Docker Compose для продакшен середовища
+├── docker-compose-tests.yml    # Docker Compose для тестового середовища
+├── Dockerfile                  # Docker-образ для основного додатку FastAPI
+├── .env.example                # Приклад файлу змінних оточення
+├── .flake8                     # Конфігурація для лінтера flake8
+├── pyproject.toml              # Конфігурація проекту та залежностей (Poetry)
+├── README.md                   # Цей файл документації
+└── .codecov.yml                # Налаштування Codecov для звітності по покриттю тестами
 ```
 
 **Коротко:**
