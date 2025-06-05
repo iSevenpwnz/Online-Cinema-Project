@@ -1,70 +1,47 @@
 [![codecov](https://codecov.io/gh/iSevenpwnz/Online-Cinema-Project/branch/main/graph/badge.svg)](https://codecov.io/gh/iSevenpwnz/Online-Cinema-Project)
 
-
-add a ai check PR
 # Online Cinema Project
 
+## Структура проєкту
+
+```
+.
+├── src/
+│   ├── main.py                 # Точка входу FastAPI
+│   ├── config/                 # Налаштування додатку (settings.py, dependencies.py)
+│   ├── database/               # Моделі, міграції, сесії БД, валідатори БД
+│   ├── exceptions/             # Кастомні винятки
+│   ├── notifications/          # Обробка сповіщень (напр., email)
+│   ├── routes/                 # FastAPI ендпоінти (маршрутизація)
+│   ├── schemas/                # Pydantic-схеми (валідація даних)
+│   ├── security/               # Логіка безпеки (автентикація, авторизація, токени)
+│   ├── storages/               # Інтеграція зі сховищами (напр., S3)
+│   ├── tests/                  # Внутрішні тести для src (e2e, integration, doubles)
+│   └── validation/             # Специфічна бізнес-валідація
+├── tests/                      # Тести на верхньому рівні (unit)
+├── alembic.ini                 # Налаштування Alembic (міграції БД)
+├── commands/                   # Допоміжні скрипти (deploy, run_migrations і т.д.)
+├── configs/                    # Конфігурації для зовнішніх сервісів (напр., nginx)
+├── docker/                     # Dockerfiles для різних компонентів (mailhog, minio_mc, nginx, tests)
+├── docker-compose-dev.yml      # Docker Compose для середовища розробки
+├── docker-compose-prod.yml     # Docker Compose для продакшен середовища
+├── docker-compose-tests.yml    # Docker Compose для тестового середовища
+├── Dockerfile                  # Docker-образ для основного додатку FastAPI
+├── .env.example                # Приклад файлу змінних оточення
+├── .flake8                     # Конфігурація для лінтера flake8
+├── pyproject.toml              # Конфігурація проекту та залежностей (Poetry)
+├── README.md                   # Цей файл документації
+└── .codecov.yml                # Налаштування Codecov для звітності по покриттю тестами
+```
+
+**Коротко:**
+- `models/` — структура БД, ORM-моделі
+- `schemas/` — Pydantic-схеми для API
+- `services/` — бізнес-логіка, інтеграції
+- `routes/` — HTTP endpoints FastAPI
+- `core/` — базові утиліти, спільний код
+- `celery/` — фонові задачі
+- `tests/` — всі тести
+- `config.py`, `db.py` — налаштування та підключення до БД
+
 <!-- решта твого README.md нижче -->
-
-# Розподіл завдань для команди
-
-## 1. Auth & Users (Учасник 1)
-- [ ] Створити моделі: User, UserGroup, UserProfile, ActivationToken, PasswordResetToken, RefreshToken
-- [ ] Реалізувати реєстрацію користувача (email, password)
-- [ ] Відправка email з активацією (celery, SMTP)
-- [ ] Активація акаунта через токен
-- [ ] Логін, видача JWT (access/refresh)
-- [ ] Logout (revoke refresh)
-- [ ] Зміна паролю (з підтвердженням старого)
-- [ ] Відновлення паролю через email
-- [ ] Валідація складності паролю
-- [ ] Групи користувачів (User, Moderator, Admin), RBAC
-- [ ] Профіль користувача (оновлення, перегляд)
-- [ ] Тести для всіх endpoint
-
-## 2. Catalog (Учасник 2)
-- [ ] Створити моделі: Movie, Genre, Star, Director, Certification, movie_genres, movie_stars, movie_directors
-- [ ] CRUD для фільмів, жанрів, акторів, режисерів, сертифікатів
-- [ ] Пошук, фільтрація, сортування фільмів
-- [ ] Рейтинг, лайки/дизлайки, коментарі
-- [ ] Додавання/видалення улюблених
-- [ ] Перегляд жанрів з кількістю фільмів
-- [ ] Тести для всіх endpoint
-
-## 3. Cart (Учасник 3)
-- [ ] Створити моделі: Cart, CartItem
-- [ ] Додавання/видалення фільмів у кошик
-- [ ] Перевірка унікальності, заборона додавання купленого
-- [ ] Перегляд кошика, очищення
-- [ ] Валідації, інтеграція з користувачем
-- [ ] Тести для всіх endpoint
-
-## 4. Orders (Учасник 4)
-- [ ] Створити моделі: Order, OrderItem
-- [ ] Створення замовлення з кошика
-- [ ] Перевірка доступності фільмів, статуси (pending, paid, canceled)
-- [ ] Перегляд історії замовлень
-- [ ] Валідації, інтеграція з оплатами
-- [ ] Тести для всіх endpoint
-
-## 5. Payments (Учасник 5)
-- [ ] Створити моделі: Payment, PaymentItem
-- [ ] Інтеграція зі Stripe (створення платежу, webhooks)
-- [ ] Перевірка статусу платежу, історія оплат
-- [ ] Адмінка для перегляду оплат, фільтри
-- [ ] Інтеграція з orders
-- [ ] Тести для всіх endpoint
-
----
-
-## Загальні правила
-- [ ] Кожен пише тести до свого функціоналу (unit/integration)
-- [ ] Всі зміни — через фічеві гілки, PR, рев’ю
-- [ ] Документувати endpoint через Swagger
-- [ ] Оновлювати README по мірі прогресу
-- [ ] Всі питання/апдейти — у Discord/Trello
-
----
-
-**Тімлід:**  
-- Організація роботи, рев’ю, CI/CD, DevOps, інтеграція, допомога по складних питаннях, контроль дедлайнів, підтримка команди.
