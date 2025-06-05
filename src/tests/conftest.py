@@ -231,13 +231,9 @@ async def seed_user(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope="function")
 async def seed_database(db_session):
     """
-    Seed the database with test data if it is empty.
-
-    This fixture initializes a `CSVDatabaseSeeder` and ensures the test database is populated before
-    running tests that require existing data.
-
-    :param db_session: The async database session fixture.
-    :type db_session: AsyncSession
+    Seeds the database with test data from a CSV file if the database is empty.
+    
+    Yields the asynchronous database session after ensuring the database is populated for tests that require existing data.
     """
     settings = get_settings()
     seeder = CSVDatabaseSeeder(
@@ -252,11 +248,22 @@ async def seed_database(db_session):
 
 @pytest.fixture
 def memory_engine():
+    """
+    Creates a new in-memory SQLite engine for use in synchronous tests.
+    
+    Returns:
+        A SQLAlchemy Engine instance connected to an in-memory SQLite database.
+    """
     return create_engine("sqlite:///:memory:")
 
 
 @pytest.fixture
 def memory_tables(memory_engine: Engine):
+    """
+    Creates all ORM tables on the in-memory SQLite engine before a test and drops them afterward.
+    
+    This fixture ensures that the database schema is set up for each test using the in-memory engine and is cleaned up after the test completes.
+    """
     Base.metadata.create_all(memory_engine)
     yield
     Base.metadata.drop_all(memory_engine)
@@ -264,6 +271,12 @@ def memory_tables(memory_engine: Engine):
 
 @pytest.fixture
 def memory_session_class(memory_engine: Engine):
+    """
+    Provides a SQLAlchemy sessionmaker bound to a connection from the in-memory SQLite engine.
+    
+    Yields:
+        A sessionmaker instance for creating database sessions using the in-memory engine.
+    """
     connection = memory_engine.connect()
     Session = sessionmaker(bind=connection)
 
@@ -272,6 +285,11 @@ def memory_session_class(memory_engine: Engine):
 
 @pytest.fixture
 def memory_session(memory_engine: Engine, memory_tables):
+    """
+    Provides a transactional SQLAlchemy session using an in-memory SQLite database for testing.
+    
+    A new connection and transaction are started for each test. The session is rolled back and closed after the test to ensure database isolation.
+    """
     connection = memory_engine.connect()
     transaction = connection.begin()
     Session = sessionmaker(bind=connection)

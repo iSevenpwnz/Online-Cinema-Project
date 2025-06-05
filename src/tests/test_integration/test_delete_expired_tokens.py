@@ -12,6 +12,11 @@ def test_delete_expired_tokens_removes_only_expired(
     memory_session_class, memory_session
 ):
 
+    """
+    Tests that the delete_expired_tokens task removes only expired activation tokens.
+    
+    Adds both expired and valid activation tokens to the database, runs the task, and verifies that only the expired token is deleted while the valid token remains.
+    """
     with patch(
         "celery_config.tasks.SessionLocal",
         new=memory_session_class,

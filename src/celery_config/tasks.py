@@ -6,6 +6,11 @@ from database.db_sync import SessionLocal
 
 @celery_app.task
 def delete_expired_tokens():
+    """
+    Deletes expired activation tokens from the database.
+    
+    This Celery task removes all activation tokens whose expiration time has passed, commits the changes, and prints the number of deleted tokens.
+    """
     db = SessionLocal()
     try:
         deleted = (
