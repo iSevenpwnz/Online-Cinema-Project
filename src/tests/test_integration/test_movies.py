@@ -9,6 +9,7 @@ from database import MovieModel
 from database import (
     GenreModel,
     StarModel,
+    CertificationModel,
 )
 
 
@@ -431,6 +432,10 @@ async def test_create_movie_and_related_models(client, db_session):
     Test that a new movie is created successfully and related models
     (genres, stars) are created if they do not exist.
     """
+    certification = CertificationModel(id=1, name="PG")
+    db_session.add(certification)
+    await db_session.commit()
+
     movie_data = {
         "uuid": str(uuid.uuid4()),
         "name": "New Movie",
@@ -519,7 +524,7 @@ async def test_create_movie_duplicate_error(client, db_session, seed_database):
     ), f"Expected status code 409, but got {response.status_code}"
 
     response_data = response.json()
-    expected_detail = f"A movie with the name '{movie_data['name']}' and release year '{movie_data['year']}' already exists."
+    expected_detail = f"A movie with the name '{movie_data['name']}', release year '{movie_data['year']}', and release time '{movie_data['time']}' already exists."
     assert (
         response_data["detail"] == expected_detail
     ), f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"

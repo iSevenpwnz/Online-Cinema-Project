@@ -339,6 +339,9 @@ async def test_create_movie_and_related_models(client, db_session):
     Test that a new movie is created successfully and related models
     (genres, stars) are created if they do not exist.
     """
+    certification = CertificationModel(id=1, name="PG")
+    db_session.add(certification)
+    await db_session.commit()
     movie_data = {
         "uuid": str(uuid.uuid4()),
         "name": "New Movie",
@@ -405,7 +408,7 @@ async def test_create_movie_duplicate_error(client, db_session, seed_database):
     }
     response = await client.post("/api/v1/theater/movies/", json=movie_data)
     assert response.status_code == 409
-    expected_detail = f"A movie with the name '{movie_data['name']}' and release year '{movie_data['year']}' already exists."
+    expected_detail = f"A movie with the name '{movie_data['name']}', release year '{movie_data['year']}', and release time '{movie_data['time']}' already exists."
     assert response.json()["detail"] == expected_detail
 
 

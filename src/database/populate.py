@@ -320,9 +320,18 @@ class CSVDatabaseSeeder:
                 await self._prepare_reference_data(data)
             )
 
+            # Отримуємо реальний certification_id для GENERAL_AUDIENCE ("G")
+            cert_result = await self._db_session.execute(
+                select(CertificationModel.id).where(
+                    CertificationModel.name
+                    == CertificationEnum.GENERAL_AUDIENCE.value
+                )
+            )
+            certification_id = cert_result.scalar_one()
+
             movies_data = self._prepare_movies_data(data, country_map)
             for m in movies_data:
-                m["certification_id"] = 1
+                m["certification_id"] = certification_id
 
             result = await self._db_session.execute(
                 insert(MovieModel).returning(MovieModel.id), movies_data

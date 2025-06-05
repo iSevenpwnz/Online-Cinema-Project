@@ -158,6 +158,7 @@ async def create_movie(
     existing_stmt = select(MovieModel).where(
         (MovieModel.name == movie_data.name),
         (MovieModel.year == movie_data.year),
+        (MovieModel.time == movie_data.time),
     )
     existing_result = await db.execute(existing_stmt)
     existing_movie = existing_result.scalars().first()
@@ -166,8 +167,8 @@ async def create_movie(
         raise HTTPException(
             status_code=409,
             detail=(
-                f"A movie with the name '{movie_data.name}' and release year "
-                f"'{movie_data.year}' already exists."
+                f"A movie with the name '{movie_data.name}', release year '{movie_data.year}', "
+                f"and release time '{movie_data.time}' already exists."
             ),
         )
 
@@ -213,11 +214,10 @@ async def create_movie(
             CertificationModel, movie_data.certification_id
         )
         if not certification:
-            certification = CertificationModel(
-                id=movie_data.certification_id, name="Default"
+            raise HTTPException(
+                status_code=400,
+                detail=f"Certification with id '{movie_data.certification_id}' does not exist.",
             )
-            db.add(certification)
-            await db.flush()
 
         movie = MovieModel(
             uuid=movie_data.uuid,
