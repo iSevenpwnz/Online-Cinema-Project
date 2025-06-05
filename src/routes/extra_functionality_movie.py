@@ -90,7 +90,7 @@ def rate_movie(
     return {"message": "Rating saved"}
 
 
-@router.get("/movies/{movie_id}/average-rating")
+@router.get("/movies/{movie_id}/average-rating", response_model=AverageRatingResponse)
 def get_average_rating(
     movie_id: int,
     db: Session = Depends(get_db)
