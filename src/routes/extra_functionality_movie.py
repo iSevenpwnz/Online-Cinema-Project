@@ -1,10 +1,8 @@
-
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import LikeDislikeSchema, MovieRatingSchema, FavoriteSchema
-from security import get_current_user
+from schemas import LikeDislikeSchema, MovieRatingSchema
+from security.http import get_current_user
 from database.models import MovieLike, MovieRating, FavoriteMovie
 
 router = APIRouter(prefix="/movies", tags=["Movies"])

@@ -6,7 +6,7 @@ from sqlalchemy import String, Float, Text, DECIMAL, UniqueConstraint, Date, For
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import Enum as SQLAlchemyEnum
 
-from database import Base
+from database.models.base import Base
 
 
 class MovieStatusEnum(str, Enum):
