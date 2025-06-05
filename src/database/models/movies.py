@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from sqlalchemy import Column, Table, Integer, ForeignKey, String, Float, Text, DECIMAL, UniqueConstraint
+from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
 
@@ -72,11 +73,19 @@ class DirectorModel(Base):
         return f"Director('{self.name}')"
 
 
+class CertificationEnum(str, SQLAlchemyEnum):
+    GENERAL_AUDIENCE = "G"
+    PARENTAL_GUIDANCE_SUGGESTED = "PG"
+    PARENTS_STRONGLY_CAUTIONED = "PG-13"
+    RESTRICTED = "R"
+    ADULTS_ONLY = "NC-17"
+
+
 class CertificationModel(Base):
     __tablename__ = "certifications"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    name: Mapped[CertificationEnum] = mapped_column(SQLAlchemyEnum(CertificationEnum), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
         "MovieModel",
