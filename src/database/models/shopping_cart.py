@@ -9,11 +9,12 @@ class Cart(Base):
     __tablename__ = "carts"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
 
     items: Mapped[list["CartItem"]] = relationship(
-        back_populates="cart",
-        cascade="all, delete-orphan"
+        back_populates="cart", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -27,9 +28,15 @@ class CartItem(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id", ondelete="CASCADE"), nullable=False)
-    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id", ondelete="CASCADE"), nullable=False)
-    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    cart_id: Mapped[int] = mapped_column(
+        ForeignKey("carts.id", ondelete="CASCADE"), nullable=False
+    )
+    movie_id: Mapped[int] = mapped_column(
+        ForeignKey("movies.id", ondelete="CASCADE"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     cart: Mapped["Cart"] = relationship("Cart", back_populates="items")
     movie: Mapped["MovieModel"] = relationship("MovieModel")
