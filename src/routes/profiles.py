@@ -1,7 +1,7 @@
 from typing import cast
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status
 from pydantic import HttpUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +37,7 @@ async def create_profile(
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
     db: AsyncSession = Depends(get_db),
     s3_client: S3StorageInterface = Depends(get_s3_storage_client),
-    profile_data: ProfileCreateSchema = Depends(ProfileCreateSchema.from_form),
+    profile_data: ProfileCreateSchema = Form(...),
 ) -> ProfileResponseSchema:
     """
     Creates a user profile.
@@ -98,8 +98,7 @@ async def create_profile(
     user_query_result = result.scalars().first()
     if user_query_result is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
     user: UserModel = cast(UserModel, user_query_result)
 
