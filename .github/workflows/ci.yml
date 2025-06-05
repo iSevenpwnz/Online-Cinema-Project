@@ -26,7 +26,7 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
       - name: Install dependencies
-        run: poetry install --no-interaction --prefer-offline
+        run: poetry install --no-interaction
       - name: Lint (flake8)
         run: poetry run flake8 .
 
@@ -49,7 +49,7 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
       - name: Install dependencies
-        run: poetry install --no-interaction --prefer-offline
+        run: poetry install --no-interaction
       - name: Type check (mypy)
         run: poetry run mypy .
 
@@ -85,7 +85,7 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
       - name: Install dependencies
-        run: poetry install --no-interaction --prefer-offline
+        run: poetry install --no-interaction
       - name: Run unit tests (in parallel)
         run: poetry run pytest src/tests/unit/ -n auto --cov=. --cov-append --cov-report=xml
       - name: Upload coverage reports to Codecov
@@ -126,7 +126,7 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
       - name: Install dependencies
-        run: poetry install --no-interaction --prefer-offline
+        run: poetry install --no-interaction
       - name: Run integration tests (in parallel)
         run: poetry run pytest src/tests/test_integration/ -n auto --cov=. --cov-append --cov-report=xml
       - name: Upload coverage reports to Codecov
@@ -152,7 +152,7 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
       - name: Install dependencies
-        run: poetry install --no-interaction --prefer-offline
+        run: poetry install --no-interaction
       - name: Start Docker Compose and wait for completion
         run: |
           docker compose -f docker-compose-tests.yml up --build --abort-on-container-exit --exit-code-from web
@@ -166,12 +166,23 @@ jobs:
     needs: [lint, type-check, unit-test, integration-test, test-e2e]
     if: always()
     steps:
-      - name: Notify Discord про статус CI
+      - name: Notify Discord про статус CI (success)
+        if: success()
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@0.3.2
         with:
           args: |
-            CI ${{ needs.*.result }} для ${{ github.repository }} на гілці ${{ github.ref }}.
+            CI success для ${{ github.repository }} на гілці ${{ github.ref }}.
+            Автор: ${{ github.actor }}
+            Pull request: ${{ github.event.pull_request.html_url || 'N/A' }}
+      - name: Notify Discord про статус CI (failure)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@0.3.2
+        with:
+          args: |
+            CI failed для ${{ github.repository }} на гілці ${{ github.ref }}.
             Автор: ${{ github.actor }}
             Pull request: ${{ github.event.pull_request.html_url || 'N/A' }}
