@@ -201,7 +201,7 @@ async def test_get_empty_cart(client: AsyncClient, auth_headers):
 async def test_add_movie_to_cart(client: AsyncClient, auth_headers, movie: MovieModel):
     """Test adding a movie to cart."""
     response = await client.post(
-        f"/api/v1/cart/items/{movie.id}/",
+        f"/api/v1/cart/add/{movie.id}",
         headers=auth_headers
     )
     assert response.status_code == 200
@@ -215,7 +215,7 @@ async def test_add_movie_to_cart(client: AsyncClient, auth_headers, movie: Movie
 async def test_add_nonexistent_movie_to_cart(client: AsyncClient, auth_headers):
     """Test adding a nonexistent movie to cart."""
     response = await client.post(
-        "/api/v1/cart/items/999/",
+        "/api/v1/cart/add/999",
         headers=auth_headers
     )
     assert response.status_code == 400
@@ -231,12 +231,12 @@ async def test_add_duplicate_movie_to_cart(
     """Test adding a movie that's already in cart."""
     # Add movie first time
     await client.post(
-        f"/api/v1/cart/items/{movie.id}/",
+        f"/api/v1/cart/add/{movie.id}",
         headers=auth_headers
     )
     # Try to add the same movie again
     response = await client.post(
-        f"/api/v1/cart/items/{movie.id}/",
+        f"/api/v1/cart/add/{movie.id}",
         headers=auth_headers
     )
     assert response.status_code == 400
@@ -252,12 +252,12 @@ async def test_remove_movie_from_cart(
     """Test removing a movie from cart."""
     # Add movie first
     await client.post(
-        f"/api/v1/cart/items/{movie.id}/",
+        f"/api/v1/cart/add/{movie.id}",
         headers=auth_headers
     )
     # Remove movie
     response = await client.delete(
-        f"/api/v1/cart/items/{movie.id}/",
+        f"/api/v1/cart/remove/{movie.id}",
         headers=auth_headers
     )
     assert response.status_code == 200
@@ -290,17 +290,17 @@ async def test_clear_cart(
 
     # Add movies to cart
     await client.post(
-        f"/api/v1/cart/items/{movie.id}/",
+        f"/api/v1/cart/add/{movie.id}",
         headers=auth_headers
     )
     await client.post(
-        f"/api/v1/cart/items/{movie2.id}/",
+        f"/api/v1/cart/add/{movie2.id}",
         headers=auth_headers
     )
 
     # Clear cart
     response = await client.delete(
-        "/api/v1/cart/",
+        "/api/v1/cart/clear",
         headers=auth_headers
     )
     assert response.status_code == 200

@@ -8,7 +8,7 @@ async def validate_movie_exists(session: AsyncSession, movie_id: int) -> None:
     """Validate that movie exists"""
     movie = await session.get(MovieModel, movie_id)
     if not movie:
-        raise ValueError("Movie not found")
+        raise ValueError(f"Movie with id {movie_id} not found")
 
 
 async def validate_movie_not_in_cart(
