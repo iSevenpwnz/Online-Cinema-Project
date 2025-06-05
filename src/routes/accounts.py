@@ -36,6 +36,9 @@ from schemas import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
 )
+from schemas.accounts import (
+    GenerateActivationLinkRequestSchema,
+)
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -254,6 +257,98 @@ async def activate_account(
     )
 
 
+@router.post("/regenerate-activation-link/")
+async def regenerate_activation_link(
+    regenerate_data: GenerateActivationLinkRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    email_sender: EmailSenderInterface = Depends(
+        get_accounts_email_notificator
+    ),
+) -> MessageResponseSchema:
+    """
+    Regenerate an activation link for a user account.
+
+    This endpoint allows users to request a new activation link if their previous
+    one has expired or was lost. It handles the following scenarios:
+    - User not found: Returns 404
+    - User already active: Returns 400
+    - User has valid activation token: Returns 409
+    - User has expired token: Deletes old token and creates new one
+    - User has no token: Creates new activation token
+
+    Args:
+        regenerate_data: Contains the user's email address
+        db: Database session
+        email_sender: Email notification service
+
+    Returns:
+        MessageResponseSchema: Generic success message to prevent information leakage
+
+    Raises:
+        HTTPException: Various status codes based on user state
+    """
+    try:
+        user = await db.scalar(
+            select(UserModel)
+            .where(UserModel.email == regenerate_data.email)
+            .options(joinedload(UserModel.activation_token))
+        )
+
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User with such email is not registered.",
+            )
+
+        if user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User already active.",
+            )
+
+        if user.activation_token:
+            expires_at = user.activation_token.expires_at
+            if (
+                expires_at.tzinfo is None
+                or expires_at.tzinfo.utcoffset(expires_at) is None
+            ):
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at > datetime.now(timezone.utc):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="User already have an activation link.",
+                )
+            else:
+                await db.execute(
+                    delete(ActivationTokenModel).where(
+                        ActivationTokenModel.id == user.activation_token.id
+                    )
+                )
+                await db.flush()
+
+        activation_token = ActivationTokenModel(user_id=user.id)
+        db.add(activation_token)
+
+        await db.commit()
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during token generation.",
+        ) from e
+    else:
+        activation_link = "http://127.0.0.1/accounts/activate/"
+
+        await email_sender.send_activation_email(user.email, activation_link)
+
+        return MessageResponseSchema(
+            message=(
+                "If you are registered, "
+                "you will receive an email with activation link."
+            )
+        )
+
+
 @router.post(
     "/password-reset/request/",
     response_model=MessageResponseSchema,
@@ -284,6 +379,12 @@ async def request_password_reset_token(
 
     Returns:
         MessageResponseSchema: A success message indicating that instructions will be sent.
+
+    Raises:
+        HTTPException:
+            - 400 Bad Request if the email is not valid.
+            - 404 Not Found if the user does not exist.
+            - 500 Internal Server Error if an error occurs during token generation.
     """
     stmt = select(UserModel).filter_by(email=data.email)
     result = await db.execute(stmt)
