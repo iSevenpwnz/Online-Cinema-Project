@@ -2,7 +2,7 @@ from logging.config import fileConfig
 
 from alembic import context
 
-from database.models import movies, accounts, extra_functionality_movie # noqa: F401
+from database.models import movies, accounts # noqa: F401
 from database.models.base import Base
 from database.session_postgresql import sync_postgresql_engine
 
