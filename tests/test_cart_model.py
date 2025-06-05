@@ -7,15 +7,18 @@ from src.database.models.movies import MovieModel
 from src.database.models.accounts import UserModel
 from src.database.models.base import Base
 
+
 @pytest.fixture
 def engine():
     return create_engine("sqlite:///:memory:")
+
 
 @pytest.fixture
 def tables(engine):
     Base.metadata.create_all(engine)
     yield
     Base.metadata.drop_all(engine)
+
 
 @pytest.fixture
 def session(engine, tables):
@@ -30,6 +33,7 @@ def session(engine, tables):
     transaction.rollback()
     connection.close()
 
+
 @pytest.fixture
 def user(session):
     user = UserModel(
@@ -40,6 +44,7 @@ def user(session):
     session.add(user)
     session.commit()
     return user
+
 
 @pytest.fixture
 def movie(session):
@@ -53,6 +58,7 @@ def movie(session):
     session.add(movie)
     session.commit()
     return movie
+
 
 class TestCart:
     def test_create_cart(self, session, user):
@@ -78,7 +84,7 @@ class TestCart:
 
         cart2 = Cart(user_id=user.id)
         session.add(cart2)
-        
+
         with pytest.raises(Exception):
             session.commit()
 
