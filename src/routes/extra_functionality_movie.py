@@ -11,29 +11,40 @@ router = APIRouter()
 
 @router.post("/movies/{movie_id}/like",
              response_model=MessageResponse,
-             summary="Like or dislike a movie"
+             summary="Like or dislike a movie",
+             description="Allows a user to like or dislike a movie."
+                         "If the user already has a reaction, it "
+                         "will be updated or removed based on the new input."
              )
 def like_or_dislike_movie(
     movie_id: int,
     data: LikeDislikeSchema,  # data.is_liked = True / False
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
-):
+) -> MessageResponse:
     existing = db.query(MovieLike).filter_by(
         user_id=user.id,
         movie_id=movie_id
     ).first()
 
     if existing:
+        if data.is_liked is None:
+            return MessageResponse(message="No change")
+
         if existing.is_liked == data.is_liked:
             db.delete(existing)
             db.commit()
-            return {"message": "Reaction removed"}
+            return MessageResponse(message="Reaction removed")
         else:
             existing.is_liked = data.is_liked
             db.commit()
-            return {"message": "Reaction updated"}
+            return MessageResponse(message="Reaction updated")
+
     else:
+        if data.is_liked is None:
+            return MessageResponse(message="No reaction to add")
+
+        # Створюємо нову реакцію
         new_reaction = MovieLike(
             user_id=user.id,
             movie_id=movie_id,
@@ -41,12 +52,14 @@ def like_or_dislike_movie(
         )
         db.add(new_reaction)
         db.commit()
-        return {"message": "Reaction added"}
+        return MessageResponse(message="Reaction added")
 
 
 @router.post("/movies/{movie_id}/favorite",
              response_model=MessageResponse,
-             summary="Toggle favorite status of a movie"
+             summary="Toggle favorite status of a movie",
+             description="Allows a user to add or remove a "
+                         "movie from their favorites."
              )
 def toggle_favorite(
     movie_id: int,
@@ -71,7 +84,10 @@ def toggle_favorite(
 
 @router.post("/movies/{movie_id}/rate",
              response_model=AverageRatingResponse,
-             summary="Rate a movie"
+             summary="Rate a movie",
+             description="Allows a user to rate a movie."
+                         "If the user has already rated the movie, "
+                         "the rating will be updated."
              )
 def rate_movie(
     movie_id: int,
@@ -90,7 +106,11 @@ def rate_movie(
     return {"message": "Rating saved"}
 
 
-@router.get("/movies/{movie_id}/average-rating", response_model=AverageRatingResponse)
+@router.get("/movies/{movie_id}/average-rating",
+            response_model=AverageRatingResponse,
+            summary="Get average rating of a movie",
+            description="Calculates and returns the average rating of a movie."
+            )
 def get_average_rating(
     movie_id: int,
     db: Session = Depends(get_db)

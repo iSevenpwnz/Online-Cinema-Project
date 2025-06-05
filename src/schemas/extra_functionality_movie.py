@@ -4,7 +4,7 @@ from typing import Optional
 
 class LikeDislikeSchema(BaseModel):
     movie_id: int
-    is_liked: Optional[bool]  # True (Like), False (Dislike), None (Empty/Neutral)
+    is_liked: Optional[bool] = None  # True (Like), False (Dislike), None (Empty/Neutral)
 
 
 class FavoriteSchema(BaseModel):

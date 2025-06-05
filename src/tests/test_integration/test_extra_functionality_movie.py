@@ -2,17 +2,13 @@ from datetime import date
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
-from database import get_db, UserModel, LanguageModel
-from database.models import FavoriteMovie, MovieLike, MovieRating
+
 
 
 import pytest_asyncio
 from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
 from database.models.movies import (
     MovieModel,
     CountryModel,
@@ -90,7 +86,6 @@ async def test_like_dislike_functionality(client: AsyncClient, seed_user_groups,
     assert response_update.status_code == 200
     assert response_update.json()["message"] == "Reaction updated"
 
-    # Видаляємо реакцію (натискаємо дизлайк повторно)
     response_remove = await client.post(
         f"/movies/{test_movie.id}/like",
         json={"is_liked": False},
