@@ -6,10 +6,10 @@ from sqlalchemy.orm import joinedload
 
 from database import get_db, MovieModel
 from database import (
-    CountryModel,
+    CertificationModel,
     GenreModel,
-    ActorModel,
-    LanguageModel
+    StarModel,
+    DirectorModel
 )
 from schemas import (
     MovieListResponseSchema,
@@ -152,7 +152,7 @@ async def create_movie(
     """
     existing_stmt = select(MovieModel).where(
         (MovieModel.name == movie_data.name),
-        (MovieModel.date == movie_data.date)
+        (MovieModel.year == movie_data.year)
     )
     existing_result = await db.execute(existing_stmt)
     existing_movie = existing_result.scalars().first()
@@ -199,17 +199,17 @@ async def create_movie(
                 await db.flush()
             actors.append(actor)
 
-        languages = []
-        for language_name in movie_data.languages:
-            lang_stmt = select(LanguageModel).where(LanguageModel.name == language_name)
-            lang_result = await db.execute(lang_stmt)
-            language = lang_result.scalars().first()
+        director = []
+        for director_name in movie_data.directors:
+            director_stmt = select(DirectorModel).where(DirectorModel.name == director_name)
+            director_result = await db.execute(lang_stmt)
+            director = director_result.scalars().first()
 
-            if not language:
-                language = LanguageModel(name=language_name)
-                db.add(language)
+            if not director:
+                director = DirectorModel(name=director_name)
+                db.add(director)
                 await db.flush()
-            languages.append(language)
+            directors.append(director)
 
         movie = MovieModel(
             name=movie_data.name,
@@ -221,8 +221,8 @@ async def create_movie(
             revenue=movie_data.revenue,
             country=country,
             genres=genres,
-            actors=actors,
-            languages=languages,
+            stars=stars,
+            directors=directors,
         )
         db.add(movie)
         await db.commit()
@@ -279,10 +279,10 @@ async def get_movie_by_id(
     stmt = (
         select(MovieModel)
         .options(
-            joinedload(MovieModel.country),
+            joinedload(MovieModel.certification),
             joinedload(MovieModel.genres),
-            joinedload(MovieModel.actors),
-            joinedload(MovieModel.languages),
+            joinedload(MovieModel.stars),
+            joinedload(MovieModel.directors),
         )
         .where(MovieModel.id == movie_id)
     )

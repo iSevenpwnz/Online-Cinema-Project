@@ -10,13 +10,13 @@ from tqdm import tqdm
 
 from config import get_settings
 from database import (
-    CountryModel,
+    CertificationModel,
     GenreModel,
-    ActorModel,
-    MoviesGenresModel,
-    ActorsMoviesModel,
-    LanguageModel,
-    MoviesLanguagesModel,
+    StarModel,
+    movie_genres,
+    movie_stars,
+    DirectorModel,
+    movie_directors,
     MovieModel,
     UserGroupModel,
     UserGroupEnum,

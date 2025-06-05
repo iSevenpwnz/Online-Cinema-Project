@@ -7,9 +7,9 @@ from sqlalchemy.orm import joinedload
 from database import MovieModel
 from database import (
     GenreModel,
-    ActorModel,
-    LanguageModel,
-    CountryModel
+    StarModel,
+    DirectorModel,
+    CertificationModel
 )
 
 
