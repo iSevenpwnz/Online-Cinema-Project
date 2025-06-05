@@ -1,10 +1,14 @@
-# from email_validator import validate_email, EmailNotValidError
+from email_validator import validate_email, EmailNotValidError
 # from sqlalchemy import select
 # from sqlalchemy.orm import joinedload
-# from validators import url as validate_url
-# import pytest
-# import httpx
-# from bs4 import BeautifulSoup
+from sqlalchemy.ext.asyncio import AsyncSession
+from validators import url as validate_url
+import pytest
+import httpx
+from bs4 import BeautifulSoup, Tag
+from typing import Any, cast
+
+from config.settings import Settings
 
 # from database import (
 #     ActivationTokenModel,
@@ -14,66 +18,72 @@
 # )
 
 
-# @pytest.mark.e2e
-# @pytest.mark.order(1)
-# @pytest.mark.asyncio
-# async def test_registration(e2e_client, reset_db_once_for_e2e, settings, seed_user_groups, e2e_db_session):
-#     """
-#     End-to-end test for user registration.
+@pytest.mark.e2e
+@pytest.mark.order(1)
+async def test_registration(
+    e2e_client: httpx.AsyncClient,
+    reset_db_once_for_e2e: Any,
+    settings: Settings,
+    seed_user_groups: AsyncSession,
+    e2e_db_session: AsyncSession
+):
+    """
+    End-to-end test for user registration.
 
-#     This test verifies the following:
-#     1. A user can successfully register with valid credentials.
-#     2. An activation email is sent to the provided email address.
-#     3. The email contains the correct activation link.
+    This test verifies the following:
+    1. A user can successfully register with valid credentials.
+    2. An activation email is sent to the provided email address.
+    3. The email contains the correct activation link.
 
-#     Steps:
-#     - Send a POST request to the registration endpoint with user data.
-#     - Assert the response status code and returned user data.
-#     - Fetch the list of emails from MailHog via its API.
-#     - Verify that an email was sent to the expected recipient.
-#     - Ensure the email body contains the activation link.
-#     """
-#     user_data = {
-#         "email": "test@mate.com",
-#         "password": "StrongPassword123!"
-#     }
+    Steps:
+    - Send a POST request to the registration endpoint with user data.
+    - Assert the response status code and returned user data.
+    - Fetch the list of emails from MailHog via its API.
+    - Verify that an email was sent to the expected recipient.
+    - Ensure the email body contains the activation link.
+    """
+    user_data = {
+        "email": "test@mate.com",
+        "password": "StrongPassword123!"
+    }
 
-#     response = await e2e_client.post("/api/v1/accounts/register/", json=user_data)
-#     assert response.status_code == 201, f"Expected 201, got {response.status_code}"
-#     response_data = response.json()
-#     assert response_data["email"] == user_data["email"]
+    response = await e2e_client.post("/api/v1/accounts/register/", json=user_data)
+    assert response.status_code == 201, f"Expected 201, got {response.status_code}"
+    response_data = response.json()
+    assert response_data["email"] == user_data["email"]
 
-#     mailhog_url = f"http://{settings.EMAIL_HOST}:{settings.MAILHOG_API_PORT}/api/v2/messages"
-#     async with httpx.AsyncClient() as client:
-#         mailhog_response = await client.get(mailhog_url)
+    mailhog_url = f"http://{settings.EMAIL_HOST}:{settings.MAILHOG_API_PORT}/api/v2/messages"
+    async with httpx.AsyncClient() as client:
+        mailhog_response = await client.get(mailhog_url)
 
-#     await e2e_db_session.commit()
-#     e2e_db_session.expire_all()
+    await e2e_db_session.commit()
+    e2e_db_session.expire_all()
 
-#     assert mailhog_response.status_code == 200, f"MailHog API returned {mailhog_response.status_code}"
-#     messages = mailhog_response.json()["items"]
-#     assert len(messages) > 0, "No emails were sent!"
+    assert mailhog_response.status_code == 200, f"MailHog API returned {mailhog_response.status_code}"
+    messages = mailhog_response.json()["items"]
+    assert len(messages) > 0, "No emails were sent!"
 
-#     email = messages[0]
-#     assert email["Content"]["Headers"]["To"][0] == user_data["email"], "Email recipient does not match."
+    email = messages[0]
+    assert email["Content"]["Headers"]["To"][0] == user_data["email"], "Email recipient does not match."
 
-#     email_html = email["Content"]["Body"]
-#     email_subject = email["Content"]["Headers"].get("Subject", [None])[0]
-#     assert email_subject == "Account Activation", f"Expected subject 'Account Activation', but got '{email_subject}'"
+    email_html = email["Content"]["Body"]
+    email_subject = email["Content"]["Headers"].get("Subject", [None])[0]
+    assert email_subject == "Account Activation", f"Expected subject 'Account Activation', but got '{email_subject}'"
 
-#     soup = BeautifulSoup(email_html, "html.parser")
-#     email_element = soup.find("strong", id="email")
-#     assert email_element is not None, "Email element with id 'email' not found!"
-#     try:
-#         validate_email(email_element.text)
-#     except EmailNotValidError as e:
-#         pytest.fail(f"The email link {email_element.text} is not valid: {e}")
-#     assert email_element.text == user_data["email"], "Email content does not match!"
+    soup = BeautifulSoup(email_html, "html.parser")
+    email_element = soup.find("strong", id="email")
+    assert email_element is not None, "Email element with id 'email' not found!"
+    try:
+        validate_email(email_element.text)
+    except EmailNotValidError as e:
+        pytest.fail(f"The email link {email_element.text} is not valid: {e}")
+    assert email_element.text == user_data["email"], "Email content does not match!"
 
-#     link_element = soup.find("a", id="link")
-#     assert link_element is not None, "Activation link element with id 'link' not found!"
-#     activation_url = link_element["href"]
-#     assert validate_url(activation_url), f"The URL '{activation_url}' is not valid!"
+    link_element = soup.find("a", id="link")
+    assert link_element is not None, "Activation link element with id 'link' not found!"
+    tag = cast(Tag, link_element)
+    activation_url = tag["href"]
+    assert validate_url(activation_url), f"The URL '{activation_url}' is not valid!"
 
 
 # @pytest.mark.e2e
