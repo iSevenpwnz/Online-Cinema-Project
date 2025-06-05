@@ -36,5 +36,8 @@ class MovieRating(Base):
     movie_id = Column(Integer, ForeignKey("movies.id"), nullable=False)
     rating = Column(Integer, nullable=False)
 
+    user = relationship("User", back_populates="movie_ratings")
+    movie = relationship("Movie", back_populates="movie_ratings")
+
     __table_args__ = (UniqueConstraint("user_id", "movie_id", name="user_movie_rating_unique"),)
 

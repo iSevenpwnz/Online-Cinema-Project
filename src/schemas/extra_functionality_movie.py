@@ -1,4 +1,4 @@
-from pydantic import BaseModel, conint
+from pydantic import BaseModel, conint, Field
 from typing import Optional
 
 
@@ -9,6 +9,6 @@ class LikeDislikeSchema(BaseModel):
 class FavoriteSchema(BaseModel):
     movie_id: int
 
-class RatingSchema(BaseModel):
+class MovieRatingSchema(BaseModel):
     movie_id: int
-    rating: conint(ge=1, le=10)
+    rating: int = Field(ge=1, le=10)

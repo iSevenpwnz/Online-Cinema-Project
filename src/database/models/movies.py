@@ -140,6 +140,16 @@ class MovieModel(Base):
         secondary=MoviesLanguagesModel,
         back_populates="movies"
     )
+    favorited_by = relationship(
+        "FavoriteMovie",
+        back_populates="movie",
+        cascade="all, delete-orphan"
+    )
+    ratings = relationship(
+        "MovieRating",
+        back_populates="movie",
+        cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         UniqueConstraint("name", "date", name="unique_movie_constraint"),

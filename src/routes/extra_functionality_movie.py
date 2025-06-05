@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas.extra_functionality_movie import LikeDislikeSchema, FavoriteSchema, RatingSchema
+from schemas import LikeDislikeSchema, MovieRatingSchema, FavoriteSchema
 from security import get_current_user
-from database.models import MovieLike, MovieFavorite, MovieRating, MovieModel
+from database.models import MovieLike, MovieRating, FavoriteMovie
 
 router = APIRouter(prefix="/movies", tags=["Movies"])
 
@@ -41,30 +41,58 @@ def like_or_dislike_movie(
         return {"message": "Reaction added"}
 
 
-@router.post("/favorite")
-def add_favorite(data: FavoriteSchema, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    fav = db.query(MovieFavorite).filter_by(user_id=user.id, movie_id=data.movie_id).first()
-    if fav:
-        raise HTTPException(400, "Already in favorites")
-    db.add(MovieFavorite(user_id=user.id, movie_id=data.movie_id))
-    db.commit()
-    return {"message": "Added to favorites"}
+@router.post("/movies/{movie_id}/favorite")
+def toggle_favorite(
+    movie_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    favorite = db.query(FavoriteMovie).filter_by(
+        user_id=user.id,
+        movie_id=movie_id
+    ).first()
 
-@router.delete("/favorite/{movie_id}")
-def remove_favorite(movie_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    fav = db.query(MovieFavorite).filter_by(user_id=user.id, movie_id=movie_id).first()
-    if not fav:
-        raise HTTPException(404, "Not in favorites")
-    db.delete(fav)
-    db.commit()
-    return {"message": "Removed from favorites"}
-
-@router.post("/rate")
-def rate_movie(data: RatingSchema, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    rating = db.query(MovieRating).filter_by(user_id=user.id, movie_id=data.movie_id).first()
-    if rating:
-        rating.rating = data.rating
+    if favorite:
+        db.delete(favorite)
+        db.commit()
+        return {"message": "Removed from favorites"}
     else:
-        db.add(MovieRating(user_id=user.id, movie_id=data.movie_id, rating=data.rating))
+        new_fav = FavoriteMovie(user_id=user.id, movie_id=movie_id)
+        db.add(new_fav)
+        db.commit()
+        return {"message": "Added to favorites"}
+
+
+
+@router.post("/movies/{movie_id}/rate")
+def rate_movie(
+    movie_id: int,
+    data: MovieRatingSchema,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    existing = db.query(MovieRating).filter_by(user_id=user.id, movie_id=movie_id).first()
+
+    if existing:
+        existing.rating = data.rating
+    else:
+        rating = MovieRating(user_id=user.id, movie_id=movie_id, rating=data.rating)
+        db.add(rating)
     db.commit()
     return {"message": "Rating saved"}
+
+
+@router.get("/movies/{movie_id}/average-rating")
+def get_average_rating(
+    movie_id: int,
+    db: Session = Depends(get_db)
+):
+    from sqlalchemy import func
+
+    avg_rating = db.query(func.avg(MovieRating.rating))\
+                   .filter_by(movie_id=movie_id)\
+                   .scalar()
+
+    if avg_rating is None:
+        return {"average_rating": None, "message": "No ratings yet"}
+    return {"average_rating": round(avg_rating, 2)}

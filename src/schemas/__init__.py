@@ -17,3 +17,8 @@ from schemas.accounts import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema
 )
+from schemas.extra_functionality_movie import (
+    LikeDislikeSchema,
+    FavoriteSchema,
+    MovieRatingSchema
+)
