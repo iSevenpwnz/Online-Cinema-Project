@@ -201,16 +201,17 @@ async def seed_user_groups(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope="function")
 async def seed_user(db_session: AsyncSession):
     """
-    Asynchronously seed the User.
+    Asynchronously seed a test user in the database.
 
-    This fixture created dummy user
+    This fixture creates a dummy user with predefined credentials for testing purposes.
+    Note: This fixture should be called after seed_user_groups to ensure user groups exist.
     """
     user_group = await db_session.scalar(
         select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
     )
 
     if user_group is None:
-        raise ValueError("seed_user should be called after seed_groups")
+        raise ValueError("seed_user should be called after seed_user_groups")
 
     user = UserModel.create(
         email=str("dummy@email.com"),

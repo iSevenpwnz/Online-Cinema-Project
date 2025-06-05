@@ -32,10 +32,6 @@ class GenerateActivationLinkRequestSchema(BaseModel):
     email: EmailStr
 
 
-class GenerateActivationLinkResponseSchema(BaseModel):
-    message: str
-
-
 class PasswordResetCompleteRequestSchema(BaseEmailPasswordSchema):
     token: str
 

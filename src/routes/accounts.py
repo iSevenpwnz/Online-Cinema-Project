@@ -1,4 +1,3 @@
-from types import NoneType
 from typing import cast
 from datetime import datetime, timezone
 
@@ -39,7 +38,6 @@ from schemas import (
 )
 from schemas.accounts import (
     GenerateActivationLinkRequestSchema,
-    GenerateActivationLinkResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
 
@@ -267,6 +265,28 @@ async def regenerate_activation_link(
         get_accounts_email_notificator
     ),
 ) -> MessageResponseSchema:
+    """
+    Regenerate an activation link for a user account.
+
+    This endpoint allows users to request a new activation link if their previous
+    one has expired or was lost. It handles the following scenarios:
+    - User not found: Returns 404
+    - User already active: Returns 400
+    - User has valid activation token: Returns 409
+    - User has expired token: Deletes old token and creates new one
+    - User has no token: Creates new activation token
+
+    Args:
+        regenerate_data: Contains the user's email address
+        db: Database session
+        email_sender: Email notification service
+
+    Returns:
+        MessageResponseSchema: Generic success message to prevent information leakage
+
+    Raises:
+        HTTPException: Various status codes based on user state
+    """
     try:
         user = await db.scalar(
             select(UserModel)
