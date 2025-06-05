@@ -44,6 +44,7 @@ types-python-jose = "*"
 types-jmespath = "^1.0.2.20250529"
 pandas-stubs = "^2.2.3.250527"
 types-tqdm = "^4.67.0.20250516"
+pytest-xdist = "^3.5.0"
 [[tool.mypy.overrides]]
 module = "aioboto3.*"
 ignore_missing_imports = true
