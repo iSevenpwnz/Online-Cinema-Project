@@ -64,15 +64,15 @@ async def user(db_session: AsyncSession, seed_user_groups):
 
 
 @pytest.fixture
-async def certification(db_session):
+def certification_sync(session):
     cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
-    db_session.add(cert)
-    await db_session.flush()
+    session.add(cert)
+    session.commit()
     return cert
 
 
 @pytest.fixture
-async def movie(db_session: AsyncSession, certification):
+async def movie(db_session: AsyncSession, certification_sync):
     """Create a test movie."""
     movie = MovieModel(
         uuid=str(uuid.uuid4()),
@@ -85,7 +85,7 @@ async def movie(db_session: AsyncSession, certification):
         gross=10000000.0,
         description="A test movie",
         price=10.0,
-        certification_id=certification.id,
+        certification_id=certification_sync.id,
     )
     db_session.add(movie)
     await db_session.commit()
@@ -161,7 +161,7 @@ class TestCart:
             session.query(CartItem).filter_by(id=cart_item.id).first() is None
         )
 
-    def test_cart_with_multiple_items(self, session, user, certification):
+    def test_cart_with_multiple_items(self, session, user, certification_sync):
         cart = Cart(user_id=user.id)
         session.add(cart)
         session.commit()
@@ -179,7 +179,7 @@ class TestCart:
                 gross=10000000.0,
                 description="A test movie",
                 price=10.0,
-                certification_id=certification.id,
+                certification_id=certification_sync.id,
             )
             session.add(movie)
             movies.append(movie)
@@ -267,7 +267,7 @@ async def test_clear_cart(
     auth_headers,
     movie: MovieModel,
     db_session: AsyncSession,
-    certification,
+    certification_sync,
 ):
     """Test clearing the cart."""
     # Add multiple movies
@@ -282,7 +282,7 @@ async def test_clear_cart(
         gross=20000000.0,
         description="A test movie 2",
         price=15.0,
-        certification_id=certification.id,
+        certification_id=certification_sync.id,
     )
     db_session.add(movie2)
     await db_session.commit()
