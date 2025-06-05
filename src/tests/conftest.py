@@ -205,16 +205,17 @@ async def seed_user(db_session: AsyncSession):
 
     This fixture created dummy user
     """
+    user_group = await db_session.scalar(
+        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    )
+
+    if user_group is None:
+        raise ValueError("seed_user should be called after seed_groups")
+
     user = UserModel.create(
         email=str("dummy@email.com"),
         raw_password="StrongP@ssword1",
-        group_id=(
-            await db_session.scalar(
-                select(UserGroupModel).where(
-                    UserGroupModel.name == UserGroupEnum.USER
-                )
-            )
-        ).id,
+        group_id=user_group.id,
     )
 
     db_session.add(user)
