@@ -244,7 +244,7 @@ class CSVDatabaseSeeder:
         for _, row in tqdm(
             data.iterrows(), total=data.shape[0], desc="Processing movies"
         ):
-            country = country_map[row["country"]]
+
             movie = {
                 "uuid": str(uuid.uuid4()),
                 "name": row["names"],
@@ -260,7 +260,7 @@ class CSVDatabaseSeeder:
                 "budget": float(row["budget_x"]),
                 "revenue": float(row["revenue"]),
                 "price": 100.0,
-                # country як str, якщо треба — country=country
+
             }
             movies_data.append(movie)
         return movies_data
