@@ -64,7 +64,7 @@ async def user(db_session: AsyncSession, seed_user_groups):
 
 
 @pytest.fixture
-def certification_sync(session):
+def certification(session):
     cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
     session.add(cert)
     session.commit()
@@ -72,7 +72,16 @@ def certification_sync(session):
 
 
 @pytest.fixture
-async def movie(db_session: AsyncSession, certification_sync):
+async def certification_async(db_session: AsyncSession):
+    cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
+    db_session.add(cert)
+    await db_session.commit()
+    await db_session.refresh(cert)
+    return cert
+
+
+@pytest.fixture
+async def movie(db_session: AsyncSession, certification_async):
     """Create a test movie."""
     movie = MovieModel(
         uuid=str(uuid.uuid4()),
@@ -85,7 +94,7 @@ async def movie(db_session: AsyncSession, certification_sync):
         gross=10000000.0,
         description="A test movie",
         price=10.0,
-        certification_id=certification_sync.id,
+        certification_id=certification_async.id,
     )
     db_session.add(movie)
     await db_session.commit()
@@ -161,7 +170,7 @@ class TestCart:
             session.query(CartItem).filter_by(id=cart_item.id).first() is None
         )
 
-    def test_cart_with_multiple_items(self, session, user, certification_sync):
+    def test_cart_with_multiple_items(self, session, user, certification):
         cart = Cart(user_id=user.id)
         session.add(cart)
         session.commit()
@@ -179,7 +188,7 @@ class TestCart:
                 gross=10000000.0,
                 description="A test movie",
                 price=10.0,
-                certification_id=certification_sync.id,
+                certification_id=certification.id,
             )
             session.add(movie)
             movies.append(movie)
@@ -267,7 +276,7 @@ async def test_clear_cart(
     auth_headers,
     movie: MovieModel,
     db_session: AsyncSession,
-    certification_sync,
+    certification_async,
 ):
     """Test clearing the cart."""
     # Add multiple movies
@@ -282,7 +291,7 @@ async def test_clear_cart(
         gross=20000000.0,
         description="A test movie 2",
         price=15.0,
-        certification_id=certification_sync.id,
+        certification_id=certification_async.id,
     )
     db_session.add(movie2)
     await db_session.commit()

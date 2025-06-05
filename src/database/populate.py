@@ -332,17 +332,27 @@ class CSVDatabaseSeeder:
             for genre_name in row["genre"].split(","):
                 genre_name = genre_name.strip()
                 if genre_name:
-                    genre = genre_map[genre_name]
-                    movie_genres_data.append(
-                        {"movie_id": movie_id, "genre_id": genre.id}
-                    )
+                    genre = genre_map.get(genre_name)
+                    if genre is not None:
+                        movie_genres_data.append(
+                            {"movie_id": movie_id, "genre_id": genre.id}
+                        )
+                    else:
+                        print(
+                            f"[WARNING] Жанр '{genre_name}' не знайдено у genre_map. Пропускаю."
+                        )
             for star_name in row["crew"].split(","):
                 star_name = star_name.strip()
                 if star_name:
-                    star = star_map[star_name]
-                    movie_stars_data.append(
-                        {"movie_id": movie_id, "star_id": star.id}
-                    )
+                    star = star_map.get(star_name)
+                    if star is not None:
+                        movie_stars_data.append(
+                            {"movie_id": movie_id, "star_id": star.id}
+                        )
+                    else:
+                        print(
+                            f"[WARNING] Актор '{star_name}' не знайдено у star_map. Пропускаю."
+                        )
             directors_str = (
                 row["director"]
                 if "director" in row and not pd.isna(row["director"])
@@ -350,11 +360,16 @@ class CSVDatabaseSeeder:
             )
             for director_name in directors_str.split(","):
                 director_name = director_name.strip()
-                if director_name and director_name in director_map:
-                    director = director_map[director_name]
-                    movie_directors_data.append(
-                        {"movie_id": movie_id, "director_id": director.id}
-                    )
+                if director_name:
+                    director = director_map.get(director_name)
+                    if director is not None:
+                        movie_directors_data.append(
+                            {"movie_id": movie_id, "director_id": director.id}
+                        )
+                    else:
+                        print(
+                            f"[WARNING] Режисер '{director_name}' не знайдено у director_map. Пропускаю."
+                        )
         return movie_genres_data, movie_stars_data, movie_directors_data
 
     async def seed(self) -> None:
