@@ -3,7 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import uuid
 
-from database.models.movies import MovieModel
+from database.models.movies import (
+    MovieModel,
+    CertificationModel,
+    CertificationEnum,
+)
 from database.models.shopping_cart import CartItem, Cart
 from database.models.accounts import UserModel
 from services.shopping_cart import ShoppingCartService
@@ -24,7 +28,15 @@ async def user(db_session: AsyncSession, seed_user_groups):
 
 
 @pytest.fixture
-async def movie(db_session: AsyncSession):
+async def certification(db_session):
+    cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
+    db_session.add(cert)
+    await db_session.flush()
+    return cert
+
+
+@pytest.fixture
+async def movie(db_session: AsyncSession, certification):
     """Create a test movie."""
     movie = MovieModel(
         uuid=str(uuid.uuid4()),
@@ -37,7 +49,7 @@ async def movie(db_session: AsyncSession):
         gross=10000000.0,
         description="A test movie",
         price=10.0,
-        certification_id=1,
+        certification_id=certification.id,
     )
     db_session.add(movie)
     await db_session.commit()
@@ -122,6 +134,7 @@ async def test_clear_cart(
     user: UserModel,
     movie: MovieModel,
     db_session: AsyncSession,
+    certification,
 ):
     """Test clearing the cart."""
     # Add multiple movies
@@ -136,7 +149,7 @@ async def test_clear_cart(
         gross=20000000.0,
         description="A test movie 2",
         price=15.0,
-        certification_id=1,
+        certification_id=certification.id,
     )
     db_session.add(movie2)
     await db_session.commit()

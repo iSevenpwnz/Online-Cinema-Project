@@ -247,22 +247,45 @@ class CSVDatabaseSeeder:
         for _, row in tqdm(
             data.iterrows(), total=data.shape[0], desc="Processing movies"
         ):
-
             movie = {
                 "uuid": str(uuid.uuid4()),
                 "name": row["names"],
-                "date": row["date_x"],
                 "year": row["date_x"].year,
-                "time": 90,
-                "imdb": 7.0,
-                "votes": 1000,
-                "score": float(row["score"]),
-                "overview": row["overview"],
-                "description": row["overview"],
-                "status": row["status"],
-                "budget": float(row["budget_x"]),
-                "revenue": float(row["revenue"]),
-                "price": 100.0,
+                "time": (
+                    int(row["time"])
+                    if "time" in row and not pd.isna(row["time"])
+                    else 90
+                ),
+                "imdb": (
+                    float(row["imdb"])
+                    if "imdb" in row and not pd.isna(row["imdb"])
+                    else 7.0
+                ),
+                "votes": (
+                    int(row["votes"])
+                    if "votes" in row and not pd.isna(row["votes"])
+                    else 1000
+                ),
+                "meta_score": (
+                    float(row["meta_score"])
+                    if "meta_score" in row and not pd.isna(row["meta_score"])
+                    else None
+                ),
+                "gross": (
+                    float(row["gross"])
+                    if "gross" in row and not pd.isna(row["gross"])
+                    else None
+                ),
+                "description": (
+                    row["overview"]
+                    if "overview" in row and not pd.isna(row["overview"])
+                    else ""
+                ),
+                "price": (
+                    float(row["price"])
+                    if "price" in row and not pd.isna(row["price"])
+                    else 100.0
+                ),
             }
             movies_data.append(movie)
         return movies_data
