@@ -83,7 +83,7 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
-app.openapi = custom_openapi
+app.openapi = custom_openapi  # type: ignore
 
 # Include routers
 app.include_router(accounts_router, prefix=f"{api_version_prefix}/accounts", tags=["accounts"])

@@ -10,9 +10,7 @@ class CartItemResponse(BaseModel):
     movie_name: str
     added_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
     @classmethod
     def from_orm(cls, obj):
@@ -21,7 +19,7 @@ class CartItemResponse(BaseModel):
             id=obj.id,
             movie_id=obj.movie_id,
             movie_name=obj.movie.name,
-            added_at=obj.added_at
+            added_at=obj.added_at,
         )
 
 
@@ -30,9 +28,7 @@ class CartResponse(BaseModel):
     user_id: int
     items: List[CartItemResponse]
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
     @classmethod
     def from_orm(cls, obj):
@@ -41,4 +37,4 @@ class CartResponse(BaseModel):
             id=obj.id,
             user_id=obj.user_id,
             items=[CartItemResponse.from_orm(item) for item in obj.items]
-        ) 
+        )

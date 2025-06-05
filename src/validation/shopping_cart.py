@@ -4,25 +4,19 @@ from database.models.shopping_cart import CartItem
 from database.models.movies import MovieModel
 
 
-async def validate_movie_exists(
-    session: AsyncSession,
-    movie_id: int
-) -> None:
+async def validate_movie_exists(session: AsyncSession, movie_id: int) -> None:
     """Validate that movie exists"""
     movie = await session.get(MovieModel, movie_id)
     if not movie:
-        raise ValueError(f"Movie with id {movie_id} not found")
+        raise ValueError("Movie not found")
 
 
 async def validate_movie_not_in_cart(
-    session: AsyncSession,
-    cart_id: int,
-    movie_id: int
+    session: AsyncSession, cart_id: int, movie_id: int
 ) -> None:
     """Validate that movie is not already in cart"""
     stmt = select(CartItem).where(
-        CartItem.cart_id == cart_id,
-        CartItem.movie_id == movie_id
+        CartItem.cart_id == cart_id, CartItem.movie_id == movie_id
     )
     result = await session.execute(stmt)
     if result.scalar_one_or_none():
@@ -30,9 +24,7 @@ async def validate_movie_not_in_cart(
 
 
 async def validate_movie_not_purchased(
-    session: AsyncSession,
-    user_id: int,
-    movie_id: int
+    session: AsyncSession, user_id: int, movie_id: int
 ) -> None:
     """
     Validate that movie is not already purchased by user.
@@ -40,4 +32,4 @@ async def validate_movie_not_purchased(
     once we have the purchased movies model.
     """
     # TODO: Implement check against purchased movies
-    pass 
+    pass

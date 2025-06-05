@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-import logging
 
 from database import get_db
 from database.models.accounts import UserModel
@@ -22,35 +21,23 @@ router = APIRouter()
         200: {
             "description": "Shopping cart retrieved successfully.",
         }
-    }
+    },
 )
 async def get_cart(
     current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> CartResponse:
-    """
-    Get user's shopping cart with all items.
-
-    :param current_user: The currently authenticated user.
-    :type current_user: UserModel
-    :param db: The SQLAlchemy async database session.
-    :type db: AsyncSession
-
-    :return: The user's shopping cart with all items.
-    :rtype: CartResponse
-    """
+    """Get user's shopping cart with all items."""
     service = ShoppingCartService(db)
     cart = await service.get_cart(current_user)
     return CartResponse.model_validate(cart)
 
 
 @router.post(
-    "/items/{movie_id}/",
+    "/add/{movie_id}",
     response_model=CartResponse,
     summary="Add movie to cart",
-    description=(
-        "<h3>This endpoint adds a movie to the user's shopping cart.</h3>"
-    ),
+    description=("<h3>This endpoint adds a movie to the user's shopping cart.</h3>"),
     responses={
         200: {
             "description": "Movie added to cart successfully.",
@@ -58,38 +45,24 @@ async def get_cart(
         404: {
             "description": "Movie not found.",
             "content": {
-                "application/json": {
-                    "example": {"detail": "Movie not found."}
-                }
+                "application/json": {"example": {"detail": "Movie not found."}}
             },
         },
         400: {
             "description": "Invalid operation.",
             "content": {
-                "application/json": {
-                    "example": {"detail": "Movie is already in cart."}
-                }
+                "application/json": {"example": {"detail": "Movie is already in cart."}}
             },
-        }
-    }
+        },
+    },
 )
 async def add_movie_to_cart(
     movie_id: int,
     current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> CartResponse:
     """
     Add movie to user's shopping cart.
-
-    :param movie_id: The ID of the movie to add.
-    :type movie_id: int
-    :param current_user: The currently authenticated user.
-    :type current_user: UserModel
-    :param db: The SQLAlchemy async database session.
-    :type db: AsyncSession
-
-    :return: The updated shopping cart.
-    :rtype: CartResponse
 
     :raises HTTPException:
         - 404 if movie not found
@@ -105,7 +78,7 @@ async def add_movie_to_cart(
 
 
 @router.delete(
-    "/items/{movie_id}/",
+    "/remove/{movie_id}",
     response_model=CartResponse,
     summary="Remove movie from cart",
     description=(
@@ -115,26 +88,14 @@ async def add_movie_to_cart(
         200: {
             "description": "Movie removed from cart successfully.",
         }
-    }
+    },
 )
 async def remove_movie_from_cart(
     movie_id: int,
     current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> CartResponse:
-    """
-    Remove movie from user's shopping cart.
-
-    :param movie_id: The ID of the movie to remove.
-    :type movie_id: int
-    :param current_user: The currently authenticated user.
-    :type current_user: UserModel
-    :param db: The SQLAlchemy async database session.
-    :type db: AsyncSession
-
-    :return: The updated shopping cart.
-    :rtype: CartResponse
-    """
+    """Remove movie from user's shopping cart."""
     service = ShoppingCartService(db)
     await service.remove_movie_from_cart(current_user, movie_id)
     cart = await service.get_cart(current_user)
@@ -142,7 +103,7 @@ async def remove_movie_from_cart(
 
 
 @router.delete(
-    "/",
+    "/clear",
     response_model=CartResponse,
     summary="Clear cart",
     description=(
@@ -152,24 +113,14 @@ async def remove_movie_from_cart(
         200: {
             "description": "Cart cleared successfully.",
         }
-    }
+    },
 )
 async def clear_cart(
     current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> CartResponse:
-    """
-    Clear user's shopping cart.
-
-    :param current_user: The currently authenticated user.
-    :type current_user: UserModel
-    :param db: The SQLAlchemy async database session.
-    :type db: AsyncSession
-
-    :return: The empty shopping cart.
-    :rtype: CartResponse
-    """
+    """Clear user's shopping cart."""
     service = ShoppingCartService(db)
     await service.clear_cart(current_user)
     cart = await service.get_cart(current_user)
-    return CartResponse.model_validate(cart) 
+    return CartResponse.model_validate(cart)

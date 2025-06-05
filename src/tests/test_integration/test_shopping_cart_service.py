@@ -80,14 +80,10 @@ async def test_add_movie_to_cart(
     movie: MovieModel
 ):
     """Test adding a movie to cart."""
-    cart_item = await service.add_movie_to_cart(user, movie.id)
-    assert isinstance(cart_item, CartItem)
-    assert cart_item.movie_id == movie.id
-
-    # Verify cart was created
+    await service.add_movie_to_cart(user, movie.id)
     cart = await service.get_cart(user)
     assert len(cart.items) == 1
-    assert cart.items[0].id == cart_item.id
+    assert cart.items[0].movie_id == movie.id
 
 
 @pytest.mark.asyncio
