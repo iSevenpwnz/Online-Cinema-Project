@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from database import get_db
 from schemas import LikeDislikeSchema, MovieRatingSchema
-from schemas.extra_functionality_movie import MessageResponse, AverageRatingResponse
+from schemas.extra_functionality_movie import MessageResponse, AverageRatingResponse, MovieRatingResponse
 from security.http import get_current_user
 from database.models import MovieLike, MovieRating, FavoriteMovie
 
@@ -12,46 +13,46 @@ router = APIRouter()
 @router.post("/movies/{movie_id}/like",
              response_model=MessageResponse,
              summary="Like or dislike a movie",
-             description="Allows a user to like or dislike a movie."
+             description="Allows a user to like or dislike a movie. "
                          "If the user already has a reaction, it "
-                         "will be updated or removed based on the new input."
-             )
-def like_or_dislike_movie(
+                         "will be updated or removed based on the new input.")
+async def like_or_dislike_movie(
     movie_id: int,
-    data: LikeDislikeSchema,  # data.is_liked = True / False
-    db: Session = Depends(get_db),
+    data: LikeDislikeSchema,
+    db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ) -> MessageResponse:
-    existing = db.query(MovieLike).filter_by(
-        user_id=user.id,
-        movie_id=movie_id
-    ).first()
+    result = await db.execute(
+        select(MovieLike).where(
+            MovieLike.user_id == user.id,
+            MovieLike.movie_id == movie_id
+        )
+    )
+    existing = result.scalars().first()
 
     if existing:
         if data.is_liked is None:
             return MessageResponse(message="No change")
 
         if existing.is_liked == data.is_liked:
-            db.delete(existing)
-            db.commit()
+            await db.delete(existing)
+            await db.commit()
             return MessageResponse(message="Reaction removed")
         else:
             existing.is_liked = data.is_liked
-            db.commit()
+            await db.commit()
             return MessageResponse(message="Reaction updated")
-
     else:
         if data.is_liked is None:
             return MessageResponse(message="No reaction to add")
 
-        # Створюємо нову реакцію
         new_reaction = MovieLike(
             user_id=user.id,
             movie_id=movie_id,
             is_liked=data.is_liked
         )
         db.add(new_reaction)
-        db.commit()
+        await db.commit()
         return MessageResponse(message="Reaction added")
 
 
@@ -59,68 +60,80 @@ def like_or_dislike_movie(
              response_model=MessageResponse,
              summary="Toggle favorite status of a movie",
              description="Allows a user to add or remove a "
-                         "movie from their favorites."
-             )
-def toggle_favorite(
+                         "movie from their favorites.")
+async def toggle_favorite(
     movie_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
-):
-    favorite = db.query(FavoriteMovie).filter_by(
-        user_id=user.id,
-        movie_id=movie_id
-    ).first()
+) -> MessageResponse:
+    result = await db.execute(
+        select(FavoriteMovie).where(
+            FavoriteMovie.user_id == user.id,
+            FavoriteMovie.movie_id == movie_id
+        )
+    )
+    favorite = result.scalars().first()
 
     if favorite:
-        db.delete(favorite)
-        db.commit()
-        return {"message": "Removed from favorites"}
+        await db.delete(favorite)
+        await db.commit()
+        return MessageResponse(message="Removed from favorites")
     else:
         new_fav = FavoriteMovie(user_id=user.id, movie_id=movie_id)
         db.add(new_fav)
-        db.commit()
-        return {"message": "Added to favorites"}
+        await db.commit()
+        return MessageResponse(message="Added to favorites")
 
 
 @router.post("/movies/{movie_id}/rate",
-             response_model=AverageRatingResponse,
+             response_model=MovieRatingResponse,
              summary="Rate a movie",
-             description="Allows a user to rate a movie."
+             description="Allows a user to rate a movie. "
                          "If the user has already rated the movie, "
-                         "the rating will be updated."
-             )
-def rate_movie(
+                         "the rating will be updated.")
+async def rate_movie(
     movie_id: int,
     data: MovieRatingSchema,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
-):
-    existing = db.query(MovieRating).filter_by(user_id=user.id, movie_id=movie_id).first()
+) -> MovieRatingResponse:
+    result = await db.execute(
+        select(MovieRating).where(
+            MovieRating.user_id == user.id,
+            MovieRating.movie_id == movie_id
+        )
+    )
+    existing = result.scalars().first()
 
     if existing:
         existing.rating = data.rating
     else:
         rating = MovieRating(user_id=user.id, movie_id=movie_id, rating=data.rating)
         db.add(rating)
-    db.commit()
-    return {"message": "Rating saved"}
+
+    await db.commit()
+    return MovieRatingResponse(
+        movie_id=movie_id,
+        rating=data.rating,
+    )
 
 
 @router.get("/movies/{movie_id}/average-rating",
             response_model=AverageRatingResponse,
             summary="Get average rating of a movie",
-            description="Calculates and returns the average rating of a movie."
-            )
-def get_average_rating(
+            description="Calculates and returns the average rating of a movie.")
+async def get_average_rating(
     movie_id: int,
-    db: Session = Depends(get_db)
-):
-    from sqlalchemy import func
-
-    avg_rating = db.query(func.avg(MovieRating.rating))\
-                   .filter_by(movie_id=movie_id)\
-                   .scalar()
+    db: AsyncSession = Depends(get_db)
+) -> AverageRatingResponse:
+    result = await db.execute(
+        select(func.avg(MovieRating.rating)).where(
+            MovieRating.movie_id == movie_id
+        )
+    )
+    avg_rating = result.scalar()
 
     if avg_rating is None:
-        return {"average_rating": None, "message": "No ratings yet"}
-    return {"average_rating": round(avg_rating, 2)}
+        return AverageRatingResponse(average_rating=None, message="No ratings yet")
+
+    return AverageRatingResponse(average_rating=round(avg_rating, 2), message="Success")
