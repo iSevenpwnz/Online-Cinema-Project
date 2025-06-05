@@ -45,4 +45,3 @@ class MovieRating(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "movie_id", name="user_movie_rating_unique"),
     )
-

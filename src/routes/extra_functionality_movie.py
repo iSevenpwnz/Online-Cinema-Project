@@ -2,12 +2,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas import LikeDislikeSchema, MovieRatingSchema
+from schemas.extra_functionality_movie import MessageResponse, AverageRatingResponse
 from security.http import get_current_user
 from database.models import MovieLike, MovieRating, FavoriteMovie
 
-router = APIRouter(prefix="/movies", tags=["Movies"])
+router = APIRouter()
 
-@router.post("/movies/{movie_id}/like")
+
+@router.post("/movies/{movie_id}/like",
+             response_model=MessageResponse,
+             summary="Like or dislike a movie"
+             )
 def like_or_dislike_movie(
     movie_id: int,
     data: LikeDislikeSchema,  # data.is_liked = True / False
@@ -39,7 +44,10 @@ def like_or_dislike_movie(
         return {"message": "Reaction added"}
 
 
-@router.post("/movies/{movie_id}/favorite")
+@router.post("/movies/{movie_id}/favorite",
+             response_model=MessageResponse,
+             summary="Toggle favorite status of a movie"
+             )
 def toggle_favorite(
     movie_id: int,
     db: Session = Depends(get_db),
@@ -61,8 +69,10 @@ def toggle_favorite(
         return {"message": "Added to favorites"}
 
 
-
-@router.post("/movies/{movie_id}/rate")
+@router.post("/movies/{movie_id}/rate",
+             response_model=AverageRatingResponse,
+             summary="Rate a movie"
+             )
 def rate_movie(
     movie_id: int,
     data: MovieRatingSchema,
