@@ -1,8 +1,8 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint, DateTime, func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from src.database.models.base import Base
-from src.database.models.movies import MovieModel
+from database.models.base import Base
+from database.models.movies import MovieModel
 
 
 class Cart(Base):

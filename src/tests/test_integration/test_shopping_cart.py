@@ -2,10 +2,10 @@ import pytest
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.database.models.cart import Cart, CartItem
-from src.database.models.movies import MovieModel
-from src.database.models.accounts import UserModel
-from src.database.models.base import Base
+from database.models.shopping_cart import Cart, CartItem
+from database.models.movies import MovieModel
+from database.models.accounts import UserModel
+from database.models.base import Base
 
 
 @pytest.fixture
