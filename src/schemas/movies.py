@@ -34,6 +34,19 @@ class GenreSchema(BaseModel):
     }
 
 
+class GenreWithCountSchema(GenreSchema):
+    movie_count: int
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                **genre_schema_example,
+                "movie_count": 42
+            }]
+        }
+    }
+
+
 class StarSchema(BaseModel):
     id: int
     name: str
@@ -114,7 +127,7 @@ class MovieBaseSchema(BaseModel):
     name: str = Field(..., max_length=250)
     year: int = Field(..., max_length=4)
     time: int = Field(..., ge=15, le=150)
-    imdb: float = Field(..., ge=0, le=10, decimal_places=1)
+    imdb: float = Field(..., ge=0, le=10, multiple_of=0.1)
     votes: int = Field(..., ge=0)
     meta_score: Optional[float] = Field(None, ge=0, le=100)
     gross: Optional[float] = Field(None, ge=0)
@@ -150,11 +163,12 @@ class MovieListSchema(BaseModel):
     id: int
     name: str = Field(..., max_length=250, min_length=1)
     year: int
-    imdb: float = Field(..., ge=0, le=10, decimal_places=1)
+    imdb: float = Field(..., ge=0, le=10)
     price: Decimal
     genres: List[GenreSchema]
 
     model_config = {
+        "from_attributes": True,
         "json_schema_extra": {
             "examples": [
                 movie_schema_example
