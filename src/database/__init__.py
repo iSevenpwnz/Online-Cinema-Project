@@ -12,13 +12,13 @@ from database.models.accounts import (
 )
 from database.models.movies import (
     MovieModel,
-    LanguageModel,
-    ActorModel,
+    DirectorModel,
+    StarModel,
     GenreModel,
-    CountryModel,
-    MoviesGenresModel,
-    ActorsMoviesModel,
-    MoviesLanguagesModel
+    CertificationModel,
+    movie_genres,
+    movie_directors,
+    movie_stars
 )
 from database.session_sqlite import reset_sqlite_database as reset_database
 from database.validators import accounts as accounts_validators
