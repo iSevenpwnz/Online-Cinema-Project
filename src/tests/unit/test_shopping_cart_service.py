@@ -2,8 +2,9 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+from decimal import Decimal
 
-from database.models.movies import MovieModel
+from database.models.movies import MovieModel, CertificationModel, CertificationEnum
 from database.models.shopping_cart import CartItem, Cart
 from database.models.accounts import UserModel
 from services.shopping_cart import ShoppingCartService
@@ -26,14 +27,17 @@ async def user(db_session: AsyncSession, seed_user_groups):
 
 
 @pytest.fixture
-async def country(db_session: AsyncSession):
-    """Create a test country."""
-    country = type('Country', (), {'id': 1, 'code': 'USA', 'name': 'United States'})()
-    return country
+async def certification(db_session: AsyncSession):
+    """Create a test certification."""
+    certification = CertificationModel(name=CertificationEnum.PARENTAL_GUIDANCE_SUGGESTED)
+    db_session.add(certification)
+    await db_session.commit()
+    await db_session.refresh(certification)
+    return certification
 
 
 @pytest.fixture
-async def movie(db_session: AsyncSession, country):
+async def movie(db_session: AsyncSession, certification):
     """Create a test movie."""
     movie = MovieModel(
         uuid="test-movie-uuid",
@@ -45,8 +49,8 @@ async def movie(db_session: AsyncSession, country):
         meta_score=80.0,
         gross=100000.0,
         description="Test overview",
-        price=100.0,
-        certification_id=1
+        price=Decimal("100.00"),
+        certification_id=certification.id
     )
     db_session.add(movie)
     await db_session.commit()
@@ -135,7 +139,8 @@ async def test_clear_cart(
     service: ShoppingCartService,
     user: UserModel,
     movie: MovieModel,
-    db_session: AsyncSession
+    db_session: AsyncSession,
+    certification: CertificationModel
 ):
     """Test clearing the cart."""
     # Add multiple movies
@@ -149,8 +154,8 @@ async def test_clear_cart(
         meta_score=85.0,
         gross=200000.0,
         description="Test overview 2",
-        price=150.0,
-        certification_id=1
+        price=Decimal("150.00"),
+        certification_id=certification.id
     )
     db_session.add(movie2)
     await db_session.commit()
