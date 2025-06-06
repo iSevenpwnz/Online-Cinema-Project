@@ -9,7 +9,7 @@ class CreatePaymentSessionRequestSchema(BaseModel):
     payment_service: PaymentServicesEnum
     payment_method: str
 
-    @field_validator("payment_method")
+    @field_validator("payment_service")
     @classmethod
     def validate_payment_service(cls, payment_service: PaymentServicesEnum):
         get_payment_service(payment_service)
