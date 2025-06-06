@@ -47,6 +47,7 @@ types-jmespath = "^1.0.2.20250529"
 pandas-stubs = "^2.2.3.250527"
 types-tqdm = "^4.67.0.20250516"
 celery-stubs = "^0.1.3"
+pytest-xdist = "^3.5.0"
 [[tool.mypy.overrides]]
 module = "aioboto3.*"
 ignore_missing_imports = true
