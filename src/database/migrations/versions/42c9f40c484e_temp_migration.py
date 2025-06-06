@@ -107,9 +107,11 @@ def downgrade() -> None:
     op.add_column('movies', sa.Column('revenue', sa.DOUBLE_PRECISION(precision=53), autoincrement=False, nullable=False))
     op.add_column('movies', sa.Column('budget', sa.NUMERIC(precision=15, scale=2), autoincrement=False, nullable=False))
     op.add_column('movies', sa.Column('score', sa.DOUBLE_PRECISION(precision=53), autoincrement=False, nullable=False))
-    op.drop_constraint(None, 'movies', type_='foreignkey')
+    op.drop_constraint('unique_movie_constraint', 'movies',
+                       type_='unique')  # Replace 'unique_movie_constraint' with the actual name
     op.create_foreign_key(op.f('movies_country_id_fkey'), 'movies', 'countries', ['country_id'], ['id'])
-    op.drop_constraint(None, 'movies', type_='unique')
+    op.drop_constraint('movies_certification_id_fkey', 'movies',
+                       type_='foreignkey')  # Replace with the actual foreign key constraint name
     op.drop_constraint('unique_movie_constraint', 'movies', type_='unique')
     op.create_unique_constraint(op.f('unique_movie_constraint'), 'movies', ['name', 'date'], postgresql_nulls_not_distinct=False)
     op.alter_column('movies', 'name',
