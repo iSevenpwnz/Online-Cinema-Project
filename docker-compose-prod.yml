@@ -138,6 +138,50 @@ services:
       - ./docker/nginx/.env
     networks:
       - theater_network
+  
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_library_service:/data
+    restart: always
+    networks:
+      - theater_network
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - theater_network
+  
+  celery_worker:
+    build: .
+    command: celery -A celery_config.celery_worker.celery_app worker --loglevel=info
+    volumes:
+      - ./src:/usr/src/app
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+    networks:
+      - theater_network
+
+  celery_beat:
+    build: .
+    command: celery -A celery_config.celery_worker.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - celery_worker
+    networks:
+      - theater_network
 
 volumes:
   postgres_theater_data:
