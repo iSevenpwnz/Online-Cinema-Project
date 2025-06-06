@@ -1,36 +1,41 @@
-genre_schema_example = {
+from typing import Union, Dict
+
+JsonValue = Union[int, float, str, bool, None, list['JsonValue'], Dict[str, 'JsonValue']]
+
+
+genre_schema_example: Dict[str, JsonValue] = {
     "id": 1,
-    "genre": "Comedy"
+    "name": "Comedy",
 }
 
-star_schema_example = {
+star_schema_example: Dict[str, JsonValue] = {
     "id": 1,
     "name": "JimmyFallon"
 }
 
-star_detail_schema_example = {
+star_detail_schema_example: Dict[str, JsonValue] = {
     "id": 1,
     "name": "JimmyFallon",
     "movies": ["Die Hard", "Pulp Fiction"]
 }
 
-director_schema_example = {
+director_schema_example: Dict[str, JsonValue] = {
     "id": 1,
     "name": "Christopher Nolan"
 }
 
-director_detail_schema_example = {
+director_detail_schema_example: Dict[str, JsonValue] = {
     "id": 1,
     "name": "Christopher Nolan",
     "movies": ["Pulp Fiction", "Kill Bill"]
 }
 
-certification_schema_example = {
+certification_schema_example: Dict[str, JsonValue] = {
     "id": 1,
     "name": "NC-17"
 }
 
-movie_schema_example = {
+movie_schema_example: Dict[str, JsonValue] = {
     "id": 1,
     "name": "Inception",
     "year": 1999,
@@ -48,7 +53,7 @@ movie_schema_example = {
     ]
 }
 
-movie_detail_schema_example = {
+movie_detail_schema_example: Dict[str, JsonValue] = {
     "id": 1,
     "name": "Inception",
     "year": 2010,
@@ -82,7 +87,7 @@ movie_detail_schema_example = {
     ]
 }
 
-movie_create_schema_example = {
+movie_create_schema_example: Dict[str, JsonValue] = {
     "uuid": "550e8400-e29b-41d4-a716-446655440000",
     "name": "Inception",
     "year": 2010,
@@ -99,7 +104,7 @@ movie_create_schema_example = {
     "directors": ["Christopher Nolan", "Quentin Tarantino"]
 }
 
-movie_update_schema_example = {
+movie_update_schema_example: Dict[str, JsonValue] = {
     "name": "Inception",
     "year": 2012,
     "imdb": 8.8,

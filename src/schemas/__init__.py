@@ -2,7 +2,7 @@ from schemas.movies import (
     MovieDetailSchema,
     MovieCreateSchema,
     MovieUpdateSchema,
-MovieListSchema
+    MovieListSchema
 )
 from schemas.accounts import (
     UserRegistrationRequestSchema,

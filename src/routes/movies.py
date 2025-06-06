@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import HttpUrl
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,7 @@ from database import CertificationModel, GenreModel, StarModel, DirectorModel
 from schemas import (
     MovieDetailSchema,
 )
-from schemas.movies import MovieCreateSchema, MovieUpdateSchema, MovieListSchema
+from schemas.movies import MovieCreateSchema, MovieUpdateSchema, MovieListSchema, MovieListPaginatedSchema
 
 router = APIRouter()
 
@@ -40,7 +41,7 @@ async def get_movie_list(
         10, ge=1, le=20, description="Number of items per page"
     ),
     db: AsyncSession = Depends(get_db),
-) -> MovieListSchema:
+) -> MovieListPaginatedSchema:
     """
     Fetch a paginated list of movies from the database (asynchronously).
 
@@ -88,15 +89,15 @@ async def get_movie_list(
 
     total_pages = (total_items + per_page - 1) // per_page
 
-    response = MovieListSchema(
+    response = MovieListPaginatedSchema(
         movies=movie_list,
         prev_page=(
-            f"/theater/movies/?page={page - 1}&per_page={per_page}"
+            HttpUrl(f"/theater/movies/?page={page - 1}&per_page={per_page}")
             if page > 1
             else None
         ),
         next_page=(
-            f"/theater/movies/?page={page + 1}&per_page={per_page}"
+            HttpUrl(f"/theater/movies/?page={page + 1}&per_page={per_page}")
             if page < total_pages
             else None
         ),
