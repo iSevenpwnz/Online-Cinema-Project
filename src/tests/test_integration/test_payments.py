@@ -265,6 +265,6 @@ async def test_create_payment_session_invalid_method(
     assert resp.status_code == 422
 
     assert (
-        f"unknown payment service '{invalid_payment_method}'"
+        f"'{invalid_payment_method}' is not a supported payment method"
         in str(resp.text).lower()
     )

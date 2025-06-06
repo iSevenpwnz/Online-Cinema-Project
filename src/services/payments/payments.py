@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod, abstractstaticmethod
 from decimal import Decimal
 from enum import Enum
-from typing import Literal, Type
+from typing import Literal, Type, cast
 
 from config.dependencies import get_settings
 from database.models.orders import Order
@@ -64,6 +64,9 @@ StripePaymentMethod: TypeAlias = Literal[
 
 
 class PaymentService(ABC):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__()
+
     @classmethod
     @abstractmethod
     def validate_payment_method(cls, payment_method: str) -> None:
@@ -104,7 +107,7 @@ class StripePaymentService(PaymentService):
             )
 
     def _create_payment_session(self, order: Order):
-        line_items = []
+        line_items: list[stripe.checkout.Session.CreateParamsLineItem] = []
         for order_item in order.order_items:
             line_items.append(
                 {
@@ -117,7 +120,8 @@ class StripePaymentService(PaymentService):
                             },
                         },
                         "unit_amount": int(
-                            order_item.price_at_order * Decimal("100")
+                            cast(Decimal, order_item.price_at_order)
+                            * Decimal("100")
                         ),
                     },
                     "quantity": 1,
@@ -129,7 +133,8 @@ class StripePaymentService(PaymentService):
             payment_method_types=[self.payment_method],
             line_items=line_items,
             mode="payment",
-            success_url="https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}",  # TODO: add url builder function and SUCCESS url to .env
+            success_url="https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}",
+            # TODO: add url builder function and SUCCESS url to .env
             cancel_url="https://yourdomain.com/cancel",  # TODO: add cancel url,
         )
 

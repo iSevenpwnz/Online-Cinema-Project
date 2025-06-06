@@ -1,3 +1,4 @@
+from typing import cast
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 from services.payments.payments import PaymentServicesEnum, get_payment_service
@@ -20,7 +21,9 @@ class CreatePaymentSessionRequestSchema(BaseModel):
     def validate_payment_method(
         cls, payment_method: str, info: ValidationInfo
     ):
-        payment_service = info.data.get("payment_service")
+        payment_service = cast(
+            PaymentServicesEnum, info.data.get("payment_service")
+        )
         payment_service_class = get_payment_service(payment_service)
         payment_service_class.validate_payment_method(payment_method)
 

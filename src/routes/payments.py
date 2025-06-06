@@ -1,4 +1,6 @@
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -37,9 +39,7 @@ async def create_payment_session(
     order = await db.scalar(
         select(Order)
         .where(Order.id == payment_session_data.order_id)
-        .options(
-            selectinload(Order.order_items).selectinload(OrderItem.movie)
-        )
+        .options(selectinload(Order.order_items).selectinload(OrderItem.movie))
     )
 
     if order is None:
@@ -65,4 +65,6 @@ async def create_payment_session(
 
     session_url = await payment_service.create_payment_session(order)
 
-    return CreatePaymentSessionResponseSchema(session_url=session_url)
+    return CreatePaymentSessionResponseSchema(
+        session_url=cast(AnyUrl, session_url)
+    )
