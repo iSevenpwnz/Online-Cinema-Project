@@ -11,7 +11,7 @@ class FakeS3Storage(S3StorageInterface):
     instead of actually uploading them to a remote server.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the fake storage with an empty dictionary.
         """

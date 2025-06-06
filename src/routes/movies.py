@@ -3,18 +3,14 @@ from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+import uuid
 
 from database import get_db, MovieModel
-from database import (
-    CountryModel,
-    GenreModel,
-    ActorModel,
-    LanguageModel
-)
+from database import CertificationModel, GenreModel, StarModel, DirectorModel
 from schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
-    MovieDetailSchema
+    MovieDetailSchema,
 )
 from schemas.movies import MovieCreateSchema, MovieUpdateSchema
 
@@ -26,26 +22,26 @@ router = APIRouter()
     response_model=MovieListResponseSchema,
     summary="Get a paginated list of movies",
     description=(
-            "<h3>This endpoint retrieves a paginated list of movies from the database. "
-            "Clients can specify the `page` number and the number of items per page using `per_page`. "
-            "The response includes details about the movies, total pages, and total items, "
-            "along with links to the previous and next pages if applicable.</h3>"
+        "<h3>This endpoint retrieves a paginated list of movies from the database. "
+        "Clients can specify the `page` number and the number of items per page using `per_page`. "
+        "The response includes details about the movies, total pages, and total items, "
+        "along with links to the previous and next pages if applicable.</h3>"
     ),
     responses={
         404: {
             "description": "No movies found.",
             "content": {
-                "application/json": {
-                    "example": {"detail": "No movies found."}
-                }
+                "application/json": {"example": {"detail": "No movies found."}}
             },
         }
-    }
+    },
 )
 async def get_movie_list(
-        page: int = Query(1, ge=1, description="Page number (1-based index)"),
-        per_page: int = Query(10, ge=1, le=20, description="Number of items per page"),
-        db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1, description="Page number (1-based index)"),
+    per_page: int = Query(
+        10, ge=1, le=20, description="Number of items per page"
+    ),
+    db: AsyncSession = Depends(get_db),
 ) -> MovieListResponseSchema:
     """
     Fetch a paginated list of movies from the database (asynchronously).
@@ -88,14 +84,24 @@ async def get_movie_list(
     if not movies:
         raise HTTPException(status_code=404, detail="No movies found.")
 
-    movie_list = [MovieListItemSchema.model_validate(movie) for movie in movies]
+    movie_list = [
+        MovieListItemSchema.model_validate(movie) for movie in movies
+    ]
 
     total_pages = (total_items + per_page - 1) // per_page
 
     response = MovieListResponseSchema(
         movies=movie_list,
-        prev_page=f"/theater/movies/?page={page - 1}&per_page={per_page}" if page > 1 else None,
-        next_page=f"/theater/movies/?page={page + 1}&per_page={per_page}" if page < total_pages else None,
+        prev_page=(
+            f"/theater/movies/?page={page - 1}&per_page={per_page}"
+            if page > 1
+            else None
+        ),
+        next_page=(
+            f"/theater/movies/?page={page + 1}&per_page={per_page}"
+            if page < total_pages
+            else None
+        ),
         total_pages=total_pages,
         total_items=total_items,
     )
@@ -107,10 +113,10 @@ async def get_movie_list(
     response_model=MovieDetailSchema,
     summary="Add a new movie",
     description=(
-            "<h3>This endpoint allows clients to add a new movie to the database. "
-            "It accepts details such as name, date, genres, actors, languages, and "
-            "other attributes. The associated country, genres, actors, and languages "
-            "will be created or linked automatically.</h3>"
+        "<h3>This endpoint allows clients to add a new movie to the database. "
+        "It accepts details such as name, date, genres, actors, languages, and "
+        "other attributes. The associated country, genres, actors, and languages "
+        "will be created or linked automatically.</h3>"
     ),
     responses={
         201: {
@@ -123,13 +129,12 @@ async def get_movie_list(
                     "example": {"detail": "Invalid input data."}
                 }
             },
-        }
+        },
     },
-    status_code=201
+    status_code=201,
 )
 async def create_movie(
-        movie_data: MovieCreateSchema,
-        db: AsyncSession = Depends(get_db)
+    movie_data: MovieCreateSchema, db: AsyncSession = Depends(get_db)
 ) -> MovieDetailSchema:
     """
     Add a new movie to the database.
@@ -152,7 +157,8 @@ async def create_movie(
     """
     existing_stmt = select(MovieModel).where(
         (MovieModel.name == movie_data.name),
-        (MovieModel.date == movie_data.date)
+        (MovieModel.year == movie_data.year),
+        (MovieModel.time == movie_data.time),
     )
     existing_result = await db.execute(existing_stmt)
     existing_movie = existing_result.scalars().first()
@@ -161,73 +167,79 @@ async def create_movie(
         raise HTTPException(
             status_code=409,
             detail=(
-                f"A movie with the name '{movie_data.name}' and release date "
-                f"'{movie_data.date}' already exists."
-            )
+                f"A movie with the name '{movie_data.name}', release year '{movie_data.year}', "
+                f"and release time '{movie_data.time}' already exists."
+            ),
         )
 
     try:
-        country_stmt = select(CountryModel).where(CountryModel.code == movie_data.country)
-        country_result = await db.execute(country_stmt)
-        country = country_result.scalars().first()
-        if not country:
-            country = CountryModel(code=movie_data.country)
-            db.add(country)
-            await db.flush()
-
         genres = []
         for genre_name in movie_data.genres:
-            genre_stmt = select(GenreModel).where(GenreModel.name == genre_name)
+            genre_stmt = select(GenreModel).where(
+                GenreModel.name == genre_name
+            )
             genre_result = await db.execute(genre_stmt)
             genre = genre_result.scalars().first()
-
             if not genre:
                 genre = GenreModel(name=genre_name)
                 db.add(genre)
                 await db.flush()
             genres.append(genre)
 
-        actors = []
-        for actor_name in movie_data.actors:
-            actor_stmt = select(ActorModel).where(ActorModel.name == actor_name)
-            actor_result = await db.execute(actor_stmt)
-            actor = actor_result.scalars().first()
-
-            if not actor:
-                actor = ActorModel(name=actor_name)
-                db.add(actor)
+        stars = []
+        for star_name in movie_data.stars:
+            star_stmt = select(StarModel).where(StarModel.name == star_name)
+            star_result = await db.execute(star_stmt)
+            star = star_result.scalars().first()
+            if not star:
+                star = StarModel(name=star_name)
+                db.add(star)
                 await db.flush()
-            actors.append(actor)
+            stars.append(star)
 
-        languages = []
-        for language_name in movie_data.languages:
-            lang_stmt = select(LanguageModel).where(LanguageModel.name == language_name)
-            lang_result = await db.execute(lang_stmt)
-            language = lang_result.scalars().first()
-
-            if not language:
-                language = LanguageModel(name=language_name)
-                db.add(language)
+        directors = []
+        for director_name in movie_data.directors:
+            director_stmt = select(DirectorModel).where(
+                DirectorModel.name == director_name
+            )
+            director_result = await db.execute(director_stmt)
+            director = director_result.scalars().first()
+            if not director:
+                director = DirectorModel(name=director_name)
+                db.add(director)
                 await db.flush()
-            languages.append(language)
+            directors.append(director)
+
+        certification = await db.get(
+            CertificationModel, movie_data.certification_id
+        )
+        if not certification:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Certification with id '{movie_data.certification_id}' does not exist.",
+            )
 
         movie = MovieModel(
+            uuid=movie_data.uuid,
             name=movie_data.name,
-            date=movie_data.date,
-            score=movie_data.score,
-            overview=movie_data.overview,
-            status=movie_data.status,
-            budget=movie_data.budget,
-            revenue=movie_data.revenue,
-            country=country,
+            year=movie_data.year,
+            time=movie_data.time,
+            imdb=movie_data.imdb,
+            votes=movie_data.votes,
+            meta_score=movie_data.meta_score,
+            gross=movie_data.gross,
+            description=movie_data.description,
+            price=movie_data.price,
+            certification_id=movie_data.certification_id,
             genres=genres,
-            actors=actors,
-            languages=languages,
+            stars=stars,
+            directors=directors,
         )
         db.add(movie)
         await db.commit()
-        await db.refresh(movie, ["genres", "actors", "languages"])
-
+        await db.refresh(
+            movie, ["genres", "stars", "directors", "certification"]
+        )
         return MovieDetailSchema.model_validate(movie)
 
     except IntegrityError:
@@ -240,25 +252,27 @@ async def create_movie(
     response_model=MovieDetailSchema,
     summary="Get movie details by ID",
     description=(
-            "<h3>Fetch detailed information about a specific movie by its unique ID. "
-            "This endpoint retrieves all available details for the movie, such as "
-            "its name, genre, crew, budget, and revenue. If the movie with the given "
-            "ID is not found, a 404 error will be returned.</h3>"
+        "<h3>Fetch detailed information about a specific movie by its unique ID. "
+        "This endpoint retrieves all available details for the movie, such as "
+        "its name, genre, crew, budget, and revenue. If the movie with the given "
+        "ID is not found, a 404 error will be returned.</h3>"
     ),
     responses={
         404: {
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         }
-    }
+    },
 )
 async def get_movie_by_id(
-        movie_id: int,
-        db: AsyncSession = Depends(get_db),
+    movie_id: int,
+    db: AsyncSession = Depends(get_db),
 ) -> MovieDetailSchema:
     """
     Retrieve detailed information about a specific movie by its ID.
@@ -279,10 +293,10 @@ async def get_movie_by_id(
     stmt = (
         select(MovieModel)
         .options(
-            joinedload(MovieModel.country),
+            joinedload(MovieModel.certification),
             joinedload(MovieModel.genres),
-            joinedload(MovieModel.actors),
-            joinedload(MovieModel.languages),
+            joinedload(MovieModel.stars),
+            joinedload(MovieModel.directors),
         )
         .where(MovieModel.id == movie_id)
     )
@@ -292,8 +306,7 @@ async def get_movie_by_id(
 
     if not movie:
         raise HTTPException(
-            status_code=404,
-            detail="Movie with the given ID was not found."
+            status_code=404, detail="Movie with the given ID was not found."
         )
 
     return MovieDetailSchema.model_validate(movie)
@@ -303,28 +316,28 @@ async def get_movie_by_id(
     "/movies/{movie_id}/",
     summary="Delete a movie by ID",
     description=(
-            "<h3>Delete a specific movie from the database by its unique ID.</h3>"
-            "<p>If the movie exists, it will be deleted. If it does not exist, "
-            "a 404 error will be returned.</p>"
+        "<h3>Delete a specific movie from the database by its unique ID.</h3>"
+        "<p>If the movie exists, it will be deleted. If it does not exist, "
+        "a 404 error will be returned.</p>"
     ),
     responses={
-        204: {
-            "description": "Movie deleted successfully."
-        },
+        204: {"description": "Movie deleted successfully."},
         404: {
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         },
     },
-    status_code=204
+    status_code=204,
 )
 async def delete_movie(
-        movie_id: int,
-        db: AsyncSession = Depends(get_db),
+    movie_id: int,
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Delete a specific movie by its ID.
@@ -348,8 +361,7 @@ async def delete_movie(
 
     if not movie:
         raise HTTPException(
-            status_code=404,
-            detail="Movie with the given ID was not found."
+            status_code=404, detail="Movie with the given ID was not found."
         )
 
     await db.delete(movie)
@@ -362,9 +374,9 @@ async def delete_movie(
     "/movies/{movie_id}/",
     summary="Update a movie by ID",
     description=(
-            "<h3>Update details of a specific movie by its unique ID.</h3>"
-            "<p>This endpoint updates the details of an existing movie. If the movie with "
-            "the given ID does not exist, a 404 error is returned.</p>"
+        "<h3>Update details of a specific movie by its unique ID.</h3>"
+        "<p>This endpoint updates the details of an existing movie. If the movie with "
+        "the given ID does not exist, a 404 error is returned.</p>"
     ),
     responses={
         200: {
@@ -379,16 +391,18 @@ async def delete_movie(
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         },
-    }
+    },
 )
 async def update_movie(
-        movie_id: int,
-        movie_data: MovieUpdateSchema,
-        db: AsyncSession = Depends(get_db),
+    movie_id: int,
+    movie_data: MovieUpdateSchema,
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update a specific movie by its ID.
@@ -414,12 +428,53 @@ async def update_movie(
 
     if not movie:
         raise HTTPException(
-            status_code=404,
-            detail="Movie with the given ID was not found."
+            status_code=404, detail="Movie with the given ID was not found."
         )
 
     for field, value in movie_data.model_dump(exclude_unset=True).items():
-        setattr(movie, field, value)
+        if field == "genres" and value is not None:
+            genres = []
+            for genre_name in value:
+                genre_result = await db.execute(
+                    select(GenreModel).where(GenreModel.name == genre_name)
+                )
+                genre = genre_result.scalars().first()
+                if not genre:
+                    genre = GenreModel(name=genre_name)
+                    db.add(genre)
+                    await db.flush()
+                genres.append(genre)
+            movie.genres = genres
+        elif field == "stars" and value is not None:
+            stars = []
+            for star_name in value:
+                star_result = await db.execute(
+                    select(StarModel).where(StarModel.name == star_name)
+                )
+                star = star_result.scalars().first()
+                if not star:
+                    star = StarModel(name=star_name)
+                    db.add(star)
+                    await db.flush()
+                stars.append(star)
+            movie.stars = stars
+        elif field == "directors" and value is not None:
+            directors = []
+            for director_name in value:
+                director_result = await db.execute(
+                    select(DirectorModel).where(
+                        DirectorModel.name == director_name
+                    )
+                )
+                director = director_result.scalars().first()
+                if not director:
+                    director = DirectorModel(name=director_name)
+                    db.add(director)
+                    await db.flush()
+                directors.append(director)
+            movie.directors = directors
+        else:
+            setattr(movie, field, value)
 
     try:
         await db.commit()

@@ -1,47 +1,71 @@
-import datetime
+from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
-from sqlalchemy import String, Float, Text, DECIMAL, UniqueConstraint, Date, ForeignKey, Table, Column
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from sqlalchemy import (
+    Column,
+    Table,
+    Integer,
+    ForeignKey,
+    String,
+    Float,
+    Text,
+    DECIMAL,
+    UniqueConstraint,
+)
 from sqlalchemy import Enum as SQLAlchemyEnum
-
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
 
 
-class MovieStatusEnum(str, Enum):
-    RELEASED = "Released"
-    POST_PRODUCTION = "Post Production"
-    IN_PRODUCTION = "In Production"
-
-
-MoviesGenresModel = Table(
-    "movies_genres",
+movie_genres = Table(
+    "movie_genres",
     Base.metadata,
     Column(
         "movie_id",
-        ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True, nullable=False),
+        Integer,
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
     Column(
         "genre_id",
-        ForeignKey("genres.id", ondelete="CASCADE"), primary_key=True, nullable=False),
+        Integer,
+        ForeignKey("genres.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
-ActorsMoviesModel = Table(
-    "actors_movies",
+movie_directors = Table(
+    "movie_directors",
     Base.metadata,
     Column(
         "movie_id",
-        ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True, nullable=False),
+        Integer,
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
     Column(
-        "actor_id",
-        ForeignKey("actors.id", ondelete="CASCADE"), primary_key=True, nullable=False),
+        "director_id",
+        Integer,
+        ForeignKey("directors.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
-MoviesLanguagesModel = Table(
-    "movies_languages",
+movie_stars = Table(
+    "movie_stars",
     Base.metadata,
-    Column("movie_id", ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True),
-    Column("language_id", ForeignKey("languages.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "movie_id",
+        Integer,
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "star_id",
+        Integer,
+        ForeignKey("stars.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 
@@ -49,110 +73,104 @@ class GenreModel(Base):
     __tablename__ = "genres"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel",
-        secondary=MoviesGenresModel,
-        back_populates="genres"
+        "MovieModel", secondary=movie_genres, back_populates="genres"
     )
 
     def __repr__(self):
-        return f"<Genre(name='{self.name}')>"
+        return f"Genre('{self.name}')"
 
 
-class ActorModel(Base):
-    __tablename__ = "actors"
+class StarModel(Base):
+    __tablename__ = "stars"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel",
-        secondary=ActorsMoviesModel,
-        back_populates="actors"
+        "MovieModel", secondary=movie_stars, back_populates="stars"
     )
 
     def __repr__(self):
-        return f"<Actor(name='{self.name}')>"
+        return f"Star('{self.name}')"
 
 
-class CountryModel(Base):
-    __tablename__ = "countries"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    code: Mapped[str] = mapped_column(String(3), unique=True, nullable=False)
-    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-
-    movies: Mapped[list["MovieModel"]] = relationship("MovieModel", back_populates="country")
-
-    def __repr__(self):
-        return f"<Country(code='{self.code}', name='{self.name}')>"
-
-
-class LanguageModel(Base):
-    __tablename__ = "languages"
+class DirectorModel(Base):
+    __tablename__ = "directors"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel",
-        secondary=MoviesLanguagesModel,
-        back_populates="languages"
+        "MovieModel", secondary=movie_directors, back_populates="directors"
     )
 
     def __repr__(self):
-        return f"<Language(name='{self.name}')>"
+        return f"Director('{self.name}')"
+
+
+class CertificationEnum(str, Enum):
+    GENERAL_AUDIENCE = "G"
+    PARENTAL_GUIDANCE_SUGGESTED = "PG"
+    PARENTS_STRONGLY_CAUTIONED = "PG-13"
+    RESTRICTED = "R"
+    ADULTS_ONLY = "NC-17"
+
+
+class CertificationModel(Base):
+    __tablename__ = "certifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[CertificationEnum] = mapped_column(
+        SQLAlchemyEnum(CertificationEnum), unique=True, nullable=False
+    )
+
+    movies: Mapped[list["MovieModel"]] = relationship(
+        "MovieModel", back_populates="certification"
+    )
+
+    def __repr__(self):
+        return f"Certification('{self.name}')"
 
 
 class MovieModel(Base):
     __tablename__ = "movies"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
-    score: Mapped[float] = mapped_column(Float, nullable=False)
-    overview: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[MovieStatusEnum] = mapped_column(
-        SQLAlchemyEnum(MovieStatusEnum), nullable=False
-    )
-    budget: Mapped[float] = mapped_column(DECIMAL(15, 2), nullable=False)
-    revenue: Mapped[float] = mapped_column(Float, nullable=False)
+    uuid: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(250), nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    time: Mapped[int] = mapped_column(Integer, nullable=False)
+    imdb: Mapped[float] = mapped_column(Float, nullable=False)
+    votes: Mapped[int] = mapped_column(Integer, nullable=False)
+    meta_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    gross: Mapped[float | None] = mapped_column(Float, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
 
-    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
-    country: Mapped["CountryModel"] = relationship("CountryModel", back_populates="movies")
+    certification_id: Mapped[int] = mapped_column(
+        ForeignKey("certifications.id"), nullable=False
+    )
+    certification: Mapped["CertificationModel"] = relationship(
+        "CertificationModel", back_populates="movies"
+    )
 
     genres: Mapped[list["GenreModel"]] = relationship(
-        "GenreModel",
-        secondary=MoviesGenresModel,
-        back_populates="movies"
+        "GenreModel", secondary=movie_genres, back_populates="movies"
     )
-
-    actors: Mapped[list["ActorModel"]] = relationship(
-        "ActorModel",
-        secondary=ActorsMoviesModel,
-        back_populates="movies"
+    stars: Mapped[list["StarModel"]] = relationship(
+        "StarModel", secondary=movie_stars, back_populates="movies"
     )
-
-    languages: Mapped[list["LanguageModel"]] = relationship(
-        "LanguageModel",
-        secondary=MoviesLanguagesModel,
-        back_populates="movies"
-    )
-    favorited_by = relationship(
-        "FavoriteMovie",
-        back_populates="movie",
-        cascade="all, delete-orphan"
-    )
-    ratings = relationship(
-        "MovieRating",
-        back_populates="movie",
-        cascade="all, delete-orphan"
+    directors: Mapped[list["DirectorModel"]] = relationship(
+        "DirectorModel", secondary=movie_directors, back_populates="movies"
     )
 
     __table_args__ = (
-        UniqueConstraint("name", "date", name="unique_movie_constraint"),
+        UniqueConstraint(
+            "name", "year", "time", name="unique_movie_constraint"
+        ),
     )
 
     @classmethod
@@ -160,4 +178,4 @@ class MovieModel(Base):
         return [cls.id.desc()]
 
     def __repr__(self):
-        return f"<Movie(name='{self.name}', release_date='{self.date}', score={self.score})>"
+        return f"<Movie(name='{self.name}', year='{self.year}', time={self.time})>"
