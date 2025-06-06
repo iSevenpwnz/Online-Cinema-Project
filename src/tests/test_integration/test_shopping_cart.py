@@ -1,50 +1,13 @@
 # type: ignore
 import pytest
 from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from database.models.shopping_cart import Cart, CartItem
 from database.models.movies import MovieModel, CertificationModel, CertificationEnum
-from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
-from database.models.base import Base
+from database.models.accounts import UserModel
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.conftest import client, db_session, seed_user_groups
 from decimal import Decimal
-
-
-@pytest.fixture
-def engine():
-    return create_engine("sqlite:///:memory:")
-
-
-@pytest.fixture
-def tables(engine):
-    Base.metadata.create_all(engine)
-    yield
-    Base.metadata.drop_all(engine)
-
-
-@pytest.fixture
-def session(engine, tables):
-    connection = engine.connect()
-    transaction = connection.begin()
-    Session = sessionmaker(bind=connection)
-    session = Session()
-
-    yield session
-
-    session.close()
-    transaction.rollback()
-    connection.close()
-
-
-@pytest.fixture
-def user_group(session):
-    group = UserGroupModel(name=UserGroupEnum.USER)
-    session.add(group)
-    session.commit()
-    return group
 
 
 @pytest.fixture
@@ -60,12 +23,6 @@ async def user(db_session: AsyncSession, seed_user_groups):
     await db_session.commit()
     await db_session.refresh(user)
     return user
-
-
-@pytest.fixture
-def country(session):
-    country = type('Country', (), {'id': 1, 'code': 'USA', 'name': 'United States'})()
-    return country
 
 
 @pytest.fixture
