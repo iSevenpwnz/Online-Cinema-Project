@@ -40,6 +40,7 @@ class OrderItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+    price_at_order: Mapped[DECIMAL] = mapped_column(DECIMAL(10, 2))
 
     order: Mapped["Order"] = relationship(back_populates="order_items")
     movie: Mapped["MovieModel"] = relationship()
