@@ -72,7 +72,6 @@ async def add_movie_to_cart(
     try:
         await service.add_movie_to_cart(current_user, movie_id)
         cart = await service.get_cart(current_user)
-        print(f"DEBUG: cart.items = {[item.movie for item in cart.items]}")
         return CartResponse.from_dict(cart)
     except ValueError as e:
         status = 404 if "not found" in str(e).lower() else 400
