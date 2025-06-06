@@ -1,6 +1,8 @@
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import insert, select
+from sqlalchemy import Engine, create_engine, insert, select
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
@@ -15,6 +17,7 @@ from database import (
     UserGroupModel,
 )
 from database.models.accounts import UserModel
+from database.models.base import Base
 from database.populate import CSVDatabaseSeeder
 from main import app
 from security.interfaces import JWTAuthManagerInterface
@@ -245,3 +248,37 @@ async def seed_database(db_session):
         await seeder.seed()
 
     yield db_session
+
+
+@pytest.fixture
+def memory_engine():
+    return create_engine("sqlite:///:memory:")
+
+
+@pytest.fixture
+def memory_tables(memory_engine: Engine):
+    Base.metadata.create_all(memory_engine)
+    yield
+    Base.metadata.drop_all(memory_engine)
+
+
+@pytest.fixture
+def memory_session_class(memory_engine: Engine):
+    connection = memory_engine.connect()
+    Session = sessionmaker(bind=connection)
+
+    yield Session
+
+
+@pytest.fixture
+def memory_session(memory_engine: Engine, memory_tables):
+    connection = memory_engine.connect()
+    transaction = connection.begin()
+    Session = sessionmaker(bind=connection)
+    session = Session()
+
+    yield session
+
+    session.close()
+    transaction.rollback()
+    connection.close()
