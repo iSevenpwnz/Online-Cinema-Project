@@ -30,7 +30,7 @@ async def get_cart(
     """Get user's shopping cart with all items."""
     service = ShoppingCartService(db)
     cart = await service.get_cart(current_user)
-    return CartResponse.model_validate(cart)
+    return CartResponse.from_dict(cart)
 
 
 @router.post(
@@ -72,9 +72,10 @@ async def add_movie_to_cart(
     try:
         await service.add_movie_to_cart(current_user, movie_id)
         cart = await service.get_cart(current_user)
-        return CartResponse.from_orm(cart)
+        return CartResponse.from_dict(cart)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        status = 404 if "not found" in str(e).lower() else 400
+        raise HTTPException(status_code=status, detail=str(e))
 
 
 @router.delete(
@@ -99,7 +100,7 @@ async def remove_movie_from_cart(
     service = ShoppingCartService(db)
     await service.remove_movie_from_cart(current_user, movie_id)
     cart = await service.get_cart(current_user)
-    return CartResponse.model_validate(cart)
+    return CartResponse.from_dict(cart)
 
 
 @router.delete(
@@ -123,4 +124,4 @@ async def clear_cart(
     service = ShoppingCartService(db)
     await service.clear_cart(current_user)
     cart = await service.get_cart(current_user)
-    return CartResponse.model_validate(cart)
+    return CartResponse.from_dict(cart)

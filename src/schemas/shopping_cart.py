@@ -13,7 +13,7 @@ class CartItemResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm(cls, obj):
+    def from_dict(cls, obj):
         """Create response from ORM object."""
         return cls(
             id=obj.id,
@@ -31,10 +31,10 @@ class CartResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm(cls, obj):
+    def from_dict(cls, obj):
         """Create response from ORM object."""
         return cls(
             id=obj.id,
             user_id=obj.user_id,
-            items=[CartItemResponse.from_orm(item) for item in obj.items]
+            items=[CartItemResponse.from_dict(item) for item in obj.items]
         )

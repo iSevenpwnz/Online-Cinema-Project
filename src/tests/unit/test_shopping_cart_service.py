@@ -1,13 +1,10 @@
+# type: ignore
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
-import uuid
+from decimal import Decimal
 
-from database.models.movies import (
-    MovieModel,
-    CertificationModel,
-    CertificationEnum,
-)
+from database.models.movies import MovieModel, CertificationModel, CertificationEnum
 from database.models.shopping_cart import CartItem, Cart
 from database.models.accounts import UserModel
 from services.shopping_cart import ShoppingCartService
@@ -18,7 +15,9 @@ from tests.conftest import db_session, seed_user_groups
 async def user(db_session: AsyncSession, seed_user_groups):
     """Create a test user."""
     user = UserModel.create(
-        email="test@example.com", raw_password="TestPassword1!", group_id=1
+        email="test@example.com",
+        raw_password="TestPassword1!",
+        group_id=1
     )
     user.is_active = True
     db_session.add(user)
@@ -28,28 +27,30 @@ async def user(db_session: AsyncSession, seed_user_groups):
 
 
 @pytest.fixture
-async def certification(db_session):
-    cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
-    db_session.add(cert)
-    await db_session.flush()
-    return cert
+async def certification(db_session: AsyncSession):
+    """Create a test certification."""
+    certification = CertificationModel(name=CertificationEnum.PARENTAL_GUIDANCE_SUGGESTED)
+    db_session.add(certification)
+    await db_session.commit()
+    await db_session.refresh(certification)
+    return certification
 
 
 @pytest.fixture
 async def movie(db_session: AsyncSession, certification):
     """Create a test movie."""
     movie = MovieModel(
-        uuid=str(uuid.uuid4()),
+        uuid="test-movie-uuid",
         name="Test Movie",
         year=2024,
-        time=120,
-        imdb=7.5,
+        time=90,
+        imdb=8.5,
         votes=1000,
-        meta_score=75.0,
-        gross=10000000.0,
-        description="A test movie",
-        price=10.0,
-        certification_id=certification.id,
+        meta_score=80.0,
+        gross=100000.0,
+        description="Test overview",
+        price=Decimal("100.00"),
+        certification_id=certification.id
     )
     db_session.add(movie)
     await db_session.commit()
@@ -64,15 +65,13 @@ async def service(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_or_create_cart(
-    service: ShoppingCartService, user: UserModel
-):
+async def test_get_or_create_cart(service: ShoppingCartService, user: UserModel):
     """Test getting or creating a cart."""
     # Get cart first time (should create new)
     cart = await service.get_or_create_cart(user)
     assert isinstance(cart, Cart)
     assert cart.user_id == user.id
-
+    
     # Get cart again (should return existing)
     cart2 = await service.get_or_create_cart(user)
     assert cart2.id == cart.id
@@ -81,7 +80,9 @@ async def test_get_or_create_cart(
 
 @pytest.mark.asyncio
 async def test_add_movie_to_cart(
-    service: ShoppingCartService, user: UserModel, movie: MovieModel
+    service: ShoppingCartService,
+    user: UserModel,
+    movie: MovieModel
 ):
     """Test adding a movie to cart."""
     await service.add_movie_to_cart(user, movie.id)
@@ -92,7 +93,8 @@ async def test_add_movie_to_cart(
 
 @pytest.mark.asyncio
 async def test_add_nonexistent_movie_to_cart(
-    service: ShoppingCartService, user: UserModel
+    service: ShoppingCartService,
+    user: UserModel
 ):
     """Test adding a nonexistent movie to cart."""
     with pytest.raises(ValueError, match="Movie with id 999 not found"):
@@ -101,7 +103,9 @@ async def test_add_nonexistent_movie_to_cart(
 
 @pytest.mark.asyncio
 async def test_add_duplicate_movie_to_cart(
-    service: ShoppingCartService, user: UserModel, movie: MovieModel
+    service: ShoppingCartService,
+    user: UserModel,
+    movie: MovieModel
 ):
     """Test adding a movie that's already in cart."""
     # Add movie first time
@@ -114,7 +118,9 @@ async def test_add_duplicate_movie_to_cart(
 
 @pytest.mark.asyncio
 async def test_remove_movie_from_cart(
-    service: ShoppingCartService, user: UserModel, movie: MovieModel
+    service: ShoppingCartService,
+    user: UserModel,
+    movie: MovieModel
 ):
     """Test removing a movie from cart."""
     # Add movie first
@@ -134,22 +140,22 @@ async def test_clear_cart(
     user: UserModel,
     movie: MovieModel,
     db_session: AsyncSession,
-    certification,
+    certification: CertificationModel
 ):
     """Test clearing the cart."""
     # Add multiple movies
     movie2 = MovieModel(
-        uuid=str(uuid.uuid4()),
+        uuid="test-movie2-uuid",
         name="Test Movie 2",
         year=2024,
-        time=120,
-        imdb=8.0,
+        time=100,
+        imdb=9.0,
         votes=2000,
-        meta_score=80.0,
-        gross=20000000.0,
-        description="A test movie 2",
-        price=15.0,
-        certification_id=certification.id,
+        meta_score=85.0,
+        gross=200000.0,
+        description="Test overview 2",
+        price=Decimal("150.00"),
+        certification_id=certification.id
     )
     db_session.add(movie2)
     await db_session.commit()
@@ -162,4 +168,4 @@ async def test_clear_cart(
     # Clear cart
     await service.clear_cart(user)
     cart = await service.get_cart(user)
-    assert len(cart.items) == 0
+    assert len(cart.items) == 0 
