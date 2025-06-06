@@ -1,76 +1,108 @@
-movie_item_schema_example = {
-    "id": 9933,
-    "name": "The Swan Princess: A Royal Wedding",
-    "date": "2020-07-20",
-    "score": 70,
-    "overview": "Princess Odette and Prince Derek are going to a wedding at Princess Mei Li and her beloved Chen. "
-                "But evil forces are at stake and the wedding plans are tarnished and "
-                "true love has difficult conditions."
-}
-
-movie_list_response_schema_example = {
-    "movies": [
-        movie_item_schema_example
-    ],
-    "prev_page": "/theater/movies/?page=1&per_page=1",
-    "next_page": "/theater/movies/?page=3&per_page=1",
-    "total_pages": 9933,
-    "total_items": 9933
-}
-
-movie_create_schema_example = {
-    "name": "New Movie",
-    "date": "2025-01-01",
-    "score": 85.5,
-    "overview": "An amazing movie.",
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
-    "country": "US",
-    "genres": ["Action", "Adventure"],
-    "actors": ["John Doe", "Jane Doe"],
-    "languages": ["English", "French"]
-}
-
-
-language_schema_example = {
-    "id": 1,
-    "name": "English"
-}
-
-country_schema_example = {
-    "id": 1,
-    "code": "US",
-    "name": "United States"
-}
-
 genre_schema_example = {
     "id": 1,
     "genre": "Comedy"
 }
 
-actor_schema_example = {
+star_schema_example = {
     "id": 1,
     "name": "JimmyFallon"
 }
 
+star_detail_schema_example = {
+    "id": 1,
+    "name": "JimmyFallon",
+    "movies": ["Die Hard", "Pulp Fiction"]
+}
+
+director_schema_example = {
+    "id": 1,
+    "name": "Christopher Nolan"
+}
+
+director_detail_schema_example = {
+    "id": 1,
+    "name": "Christopher Nolan",
+    "movies": ["Pulp Fiction", "Kill Bill"]
+}
+
+certification_schema_example = {
+    "id": 1,
+    "name": "NC-17"
+}
+
+movie_schema_example = {
+    "id": 1,
+    "name": "Inception",
+    "year": 1999,
+    "imdb": 8.8,
+    "price": "12.99",
+    "genres": [
+        {
+            "id": 1,
+            "name": "Sci-Fi"
+        },
+        {
+            "id": 2,
+            "name": "Action"
+        }
+    ]
+}
+
 movie_detail_schema_example = {
-    **movie_item_schema_example,
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
-    "actors": [actor_schema_example],
-    "country": country_schema_example,
-    "genres": [genre_schema_example],
-    "languages": [language_schema_example]
+    "id": 1,
+    "name": "Inception",
+    "year": 2010,
+    "imdb": 8.8,
+    "price": "12.99",
+    "description": "A mind-bending thriller by Christopher Nolan.",
+    "certification": {
+        "id": 1,
+        "name": "PG-13"
+    },
+    "genres": [
+        {
+            "id": 1,
+            "name": "Sci-Fi"
+        },
+        {
+            "id": 2,
+            "name": "Action"
+        }
+    ],
+    "stars": [
+        {
+            "id": 1,
+            "name": "Leonardo DiCaprio"
+        }
+    ],
+    "directors": [
+        {
+            "id": 1, "name": "Christopher Nolan"
+        }
+    ]
+}
+
+movie_create_schema_example = {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Inception",
+    "year": 2010,
+    "time": 65,
+    "imdb": 8.8,
+    "votes": 2300000,
+    "meta_score": 74.0,
+    "gross": 836.8,
+    "description": "A mind-bending thriller by Christopher Nolan.",
+    "price": "12.99",
+    "certification_id": "2",
+    "genres": ["Sci-Fi", "Action"],
+    "stars": ["Leonardo DiCaprio", "Joseph Gordon-Levitt", "Ellen Page"],
+    "directors": ["Christopher Nolan", "Quentin Tarantino"]
 }
 
 movie_update_schema_example = {
-    "name": "Update Movie",
-    "date": "2025-01-01",
-    "score": 85.5,
-    "overview": "An amazing movie.",
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
+    "name": "Inception",
+    "year": 2012,
+    "imdb": 8.8,
+    "price": "12.99",
+    "certification_id": "2",
 }

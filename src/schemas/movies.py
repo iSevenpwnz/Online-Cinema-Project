@@ -1,160 +1,182 @@
-from datetime import date, datetime
-from typing import Optional, List
+from decimal import Decimal
+from datetime import datetime
+from typing import Optional, List, Union
+from pydantic import BaseModel, Field, field_validator, HttpUrl
 
-from pydantic import BaseModel, Field, field_validator
-
-# from database.models.movies import MovieStatusEnum
-from schemas.examples.movies import (
-    country_schema_example,
-    language_schema_example,
-    genre_schema_example,
-    actor_schema_example,
-    movie_item_schema_example,
-    movie_list_response_schema_example,
-    movie_create_schema_example,
-    movie_detail_schema_example,
-    movie_update_schema_example,
-)
-
-
-class LanguageSchema(BaseModel):
-    id: int
-    name: str
-
-    model_config = {"from_attributes": True}
-
-
-class CountrySchema(BaseModel):
-    id: int
-    code: str
-    name: Optional[str]
-
-    model_config = {"from_attributes": True}
-
+# Спрощення прикладів
+from schemas.examples.movies import genre_schema_example, star_schema_example, star_detail_schema_example, director_schema_example, director_detail_schema_example, certification_schema_example, movie_schema_example, movie_detail_schema_example, movie_create_schema_example, movie_update_schema_example
 
 class GenreSchema(BaseModel):
     id: int
     name: str
 
-    model_config = {"from_attributes": True}
-
+    model_config = {
+        "orm_mode": True,
+        "anystr_strip_whitespace": True,
+        "max_anystr_length": 100,
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [genre_schema_example]
+        },
+    }
 
 class StarSchema(BaseModel):
     id: int
     name: str
-    model_config = {"from_attributes": True}
 
+    model_config = {
+        "orm_mode": True,
+        "anystr_strip_whitespace": True,
+        "max_anystr_length": 100,
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [star_schema_example]
+        },
+    }
 
-class CertificationSchema(BaseModel):
-    id: int
-    name: str
-    model_config = {"from_attributes": True}
+class StarDetailSchema(StarSchema):
+    movie: List[str]
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [star_detail_schema_example]
+        },
+    }
 
 class DirectorSchema(BaseModel):
     id: int
     name: str
-    model_config = {"from_attributes": True}
 
+    model_config = {
+        "orm_mode": True,
+        "anystr_strip_whitespace": True,
+        "max_anystr_length": 100,
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [director_schema_example]
+        },
+    }
+
+class DirectorDetailSchema(DirectorSchema):
+    movie: List[str]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [director_detail_schema_example]
+        }
+    }
+
+class CertificationSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "orm_mode": True,
+        "anystr_strip_whitespace": True,
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [certification_schema_example]
+        },
+    }
 
 class MovieBaseSchema(BaseModel):
-    name: str = Field(..., max_length=255)
-    date: date
-    year: int
-    score: float = Field(..., ge=0, le=100)
-    overview: str
-    status: str
-    budget: float = Field(..., ge=0)
-    revenue: float = Field(..., ge=0)
-    country: str
-    model_config = {"from_attributes": True}
+    uuid: str = Field(..., max_length=100)
+    name: str = Field(..., max_length=250)
+    year: int = Field(..., max_length=4)
+    time: int = Field(..., ge=15, le=150)
+    imdb: float = Field(..., ge=0, le=10, decimal_places=1)
+    votes: int = Field(..., ge=0)
+    meta_score: Optional[float] = Field(None, ge=0, le=100)
+    gross: Optional[float] = Field(None, ge=0)
+    description: str = Field(..., min_length=10, max_length=2000)
+    price: Decimal = Field(..., ge=0, max_digits=10, decimal_places=2)
+    certification_id: int = Field(..., gt=0)
+    genres: List[int] = Field(..., min_length=1)
+    stars: List[int] = Field(..., min_length=1)
+    directors: List[int] = Field(..., min_length=1)
 
-    @field_validator("date")
-    @classmethod
-    def validate_date(cls, value):
-        current_year = datetime.now().year
-        if value.year > current_year + 1:
-            raise ValueError(
-                f"The year in 'date' cannot be greater than {current_year + 1}."
-            )
-        return value
+    model_config = {
+        "orm_mode": True,
+        "max_anystr_length": 250,
+        "validate_assignment": True,
+        "from_attributes": True,
+    }
 
-
-class MovieDetailSchema(BaseModel):
+class MovieDetailSchema(MovieBaseSchema):
     id: int
     uuid: str
-    name: str
-    year: int
-    time: int
-    imdb: float
-    votes: int
-    meta_score: Optional[float]
-    gross: Optional[float]
-    description: str
-    price: float
-    certification_id: int
     certification: CertificationSchema
-    genres: List[GenreSchema]
-    stars: List[StarSchema]
-    directors: List[DirectorSchema]
-    model_config = {"from_attributes": True}
+    genres: List[GenreSchema] = Field(..., min_length=1)
+    stars: List[StarSchema] = Field(..., min_length=1)
+    directors: List[DirectorSchema] = Field(..., min_length=1)
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [movie_detail_schema_example]
+        }
+    }
 
-class MovieListItemSchema(BaseModel):
+class MovieListSchema(BaseModel):
     id: int
-    name: str
+    name: str = Field(..., max_length=250, min_length=1)
     year: int
-    imdb: float
-    price: float
-    description: str
-    model_config = {"from_attributes": True}
+    imdb: float = Field(..., ge=0, le=10, decimal_places=1)
+    price: Decimal
+    genres: List[GenreSchema]
+    prev_page: Optional[HttpUrl] = None
+    next_page: Optional[HttpUrl] = None
+    total_pages: int = Field(..., ge=1)
+    total_items: int = Field(..., ge=0)
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [movie_schema_example]
+        },
+    }
 
-class MovieListResponseSchema(BaseModel):
-    movies: List[MovieListItemSchema]
-    prev_page: Optional[str]
-    next_page: Optional[str]
-    total_pages: int
-    total_items: int
+class MovieCreateSchema(MovieBaseSchema):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [movie_create_schema_example]
+        }
+    }
 
-    model_config = {"from_attributes": True}
-
-
-class MovieCreateSchema(BaseModel):
-    uuid: str
-    name: str
-    year: int
-    time: int
-    imdb: float
-    votes: int
-    meta_score: Optional[float] = None
-    gross: Optional[float] = None
-    description: str
-    price: float
-    certification_id: int
-    genres: List[str]
-    stars: List[str]
-    directors: List[str]
-    model_config = {"from_attributes": True}
-
-    @field_validator("genres", "stars", "directors", mode="before")
+    @field_validator("genres", mode="before")
     @classmethod
     def normalize_list_fields(cls, value: List[str]) -> List[str]:
         return [item.title() for item in value]
 
-
 class MovieUpdateSchema(BaseModel):
-    name: Optional[str] = None
-    year: Optional[int] = None
-    time: Optional[int] = None
-    imdb: Optional[float] = None
+    uuid: Optional[str] = Field(None, max_length=100)
+    name: Optional[str] = Field(None, max_length=250, min_length=1)
+    year: Optional[int] = Field(None, le=datetime.now().year)
+    time: Optional[int] = Field(None, ge=1, le=150)
+    imdb: Optional[float] = Field(None, ge=0, le=10)
     votes: Optional[int] = None
     meta_score: Optional[float] = None
     gross: Optional[float] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
     certification_id: Optional[int] = None
-    genres: Optional[List[str]] = None
-    stars: Optional[List[str]] = None
-    directors: Optional[List[str]] = None
-    model_config = {"from_attributes": True}
+    genres: Optional[Union[List[int], List[str]]] = None
+    stars: Optional[Union[List[int], List[str]]] = None
+    directors: Optional[Union[List[int], List[str]]] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [movie_update_schema_example]
+        },
+        "extra": "forbid",
+        "orm_mode": True,
+        "anystr_strip_whitespace": True,
+        "validate_assignment": True
+    }
+
+    @field_validator("genres", "stars", "directors", mode="before")
+    @classmethod
+    def normalize_list_fields(cls, value: Union[List[int], List[str], None]) -> Union[List[int], List[str], None]:
+        if value is None:
+            return None
+        if isinstance(value[0], str):
+            return [item.strip().title() for item in value]
+        return value

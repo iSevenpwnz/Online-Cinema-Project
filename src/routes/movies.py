@@ -8,18 +8,16 @@ import uuid
 from database import get_db, MovieModel
 from database import CertificationModel, GenreModel, StarModel, DirectorModel
 from schemas import (
-    MovieListResponseSchema,
-    MovieListItemSchema,
     MovieDetailSchema,
 )
-from schemas.movies import MovieCreateSchema, MovieUpdateSchema
+from schemas.movies import MovieCreateSchema, MovieUpdateSchema, MovieListSchema
 
 router = APIRouter()
 
 
 @router.get(
     "/movies/",
-    response_model=MovieListResponseSchema,
+    response_model=MovieListSchema,
     summary="Get a paginated list of movies",
     description=(
         "<h3>This endpoint retrieves a paginated list of movies from the database. "
@@ -42,7 +40,7 @@ async def get_movie_list(
         10, ge=1, le=20, description="Number of items per page"
     ),
     db: AsyncSession = Depends(get_db),
-) -> MovieListResponseSchema:
+) -> MovieListSchema:
     """
     Fetch a paginated list of movies from the database (asynchronously).
 
@@ -58,7 +56,7 @@ async def get_movie_list(
     :type db: AsyncSession
 
     :return: A response containing the paginated list of movies and metadata.
-    :rtype: MovieListResponseSchema
+    :rtype: MovieListSchema
 
     :raises HTTPException: Raises a 404 error if no movies are found for the requested page.
     """
@@ -85,12 +83,12 @@ async def get_movie_list(
         raise HTTPException(status_code=404, detail="No movies found.")
 
     movie_list = [
-        MovieListItemSchema.model_validate(movie) for movie in movies
+        MovieListSchema.model_validate(movie) for movie in movies
     ]
 
     total_pages = (total_items + per_page - 1) // per_page
 
-    response = MovieListResponseSchema(
+    response = MovieListSchema(
         movies=movie_list,
         prev_page=(
             f"/theater/movies/?page={page - 1}&per_page={per_page}"

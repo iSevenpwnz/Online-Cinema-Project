@@ -10,7 +10,7 @@ from sqlalchemy import (
     Float,
     Text,
     DECIMAL,
-    UniqueConstraint,
+    UniqueConstraint, Index,
 )
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
