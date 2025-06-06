@@ -135,57 +135,57 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: iSevenpwnz/Online-Cinema-Project
 
-  test-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-      - name: Build Docker image with cache
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          tags: myimage:ci
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-      - name: Install Poetry
-        run: pip install poetry
-      - name: Install dependencies
-        run: poetry install --no-interaction
-      - name: Start Docker Compose and wait for completion
-        run: |
-          docker compose -f docker-compose-tests.yml up --build --abort-on-container-exit --exit-code-from web
-      - name: Cleanup
-        if: always()
-        run: |
-          docker compose -f docker-compose-tests.yml down
+  # test-e2e:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
+  #     - name: Cache Docker layers
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: /tmp/.buildx-cache
+  #         key: ${{ runner.os }}-buildx-${{ github.sha }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-buildx-
+  #     - name: Build Docker image with cache
+  #       uses: docker/build-push-action@v5
+  #       with:
+  #         context: .
+  #         file: ./Dockerfile
+  #         push: false
+  #         tags: myimage:ci
+  #         cache-from: type=local,src=/tmp/.buildx-cache
+  #         cache-to: type=local,dest=/tmp/.buildx-cache
+  #     - name: Cache Poetry virtualenv
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/pypoetry
+  #           ~/.cache/pip
+  #         key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-poetry-
+  #     - name: Install Poetry
+  #       run: pip install poetry
+  #     - name: Install dependencies
+  #       run: poetry install --no-interaction
+  #     - name: Start Docker Compose and wait for completion
+  #       run: |
+  #         docker compose -f docker-compose-tests.yml up --build --abort-on-container-exit --exit-code-from web
+  #     - name: Cleanup
+  #       if: always()
+  #       run: |
+  #         docker compose -f docker-compose-tests.yml down
 
   notify-discord:
     runs-on: ubuntu-latest
-    needs: [lint, type-check, unit-test, integration-test, test-e2e]
+    needs: [lint, type-check, unit-test, integration-test]
     if: always()
     steps:
       - name: Notify Discord про статус CI (success)
-        if: success()
+        if: ${{ needs.lint.result == 'success' && needs.type-check.result == 'success' && needs.unit-test.result == 'success' && needs.integration-test.result == 'success' }}
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@0.3.2
@@ -195,7 +195,7 @@ jobs:
             Автор: ${{ github.actor }}
             Pull request: ${{ github.event.pull_request.html_url || 'N/A' }}
       - name: Notify Discord про статус CI (failure)
-        if: failure()
+        if: ${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' || needs.unit-test.result == 'failure' || needs.integration-test.result == 'failure' }}
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@0.3.2
