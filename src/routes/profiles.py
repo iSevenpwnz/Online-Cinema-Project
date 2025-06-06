@@ -18,7 +18,7 @@ from database.models.accounts import (
 from exceptions import BaseSecurityError, S3FileUploadError
 from schemas.profiles import ProfileCreateSchema, ProfileResponseSchema
 from security.interfaces import JWTAuthManagerInterface
-from security.http import get_token
+from security.http import get_current_user, get_token, get_token_user_id
 from storages import S3StorageInterface
 
 
@@ -33,8 +33,7 @@ router = APIRouter()
 )
 async def create_profile(
     user_id: int,
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    token_user_id: int = Depends(get_token_user_id),
     db: AsyncSession = Depends(get_db),
     s3_client: S3StorageInterface = Depends(get_s3_storage_client),
     profile_data: ProfileCreateSchema = Form(...),
@@ -63,27 +62,15 @@ async def create_profile(
         HTTPException: If authentication fails, if the user is not found or inactive,
                        or if the profile already exists, or if S3 upload fails.
     """
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        token_user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)
-        )
-
     if user_id != token_user_id:
-        # Отримуємо групу користувача, який робить запит (token_user_id)
         group_stmt = (
             select(UserGroupModel)
             .join(UserModel)
-            .where(
-                UserModel.id == token_user_id
-            )  # Використовуємо token_user_id
+            .where(UserModel.id == token_user_id)
         )
         result = await db.execute(group_stmt)
         requesting_user_group = result.scalars().first()
 
-        # Якщо група не знайдена або це звичайний користувач (не адмін/модератор)
         if (
             not requesting_user_group
             or requesting_user_group.name == UserGroupEnum.USER
