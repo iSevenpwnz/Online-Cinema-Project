@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from config.dependencies import get_settings
 from database.models.accounts import UserModel
-from database.models.orders import Order, OrderStatusEnum
+from database.models.orders import Order, OrderStatusEnum, OrderItem
 from schemas.payments import (
     CreatePaymentSessionRequestSchema,
     CreatePaymentSessionResponseSchema,
@@ -37,7 +37,9 @@ async def create_payment_session(
     order = await db.scalar(
         select(Order)
         .where(Order.id == payment_session_data.order_id)
-        .options(selectinload(Order.order_items))
+        .options(
+            selectinload(Order.order_items).selectinload(OrderItem.movie)
+        )
     )
 
     if order is None:
