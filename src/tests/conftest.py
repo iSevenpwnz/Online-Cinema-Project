@@ -229,6 +229,13 @@ async def seed_user(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture(scope="function")
+async def seed_active_user(db_session: AsyncSession, seed_user: UserModel):
+    seed_user.is_active = True
+    await db_session.commit()
+    return seed_user
+
+
+@pytest_asyncio.fixture(scope="function")
 async def seed_database(db_session):
     """
     Seed the database with test data if it is empty.
