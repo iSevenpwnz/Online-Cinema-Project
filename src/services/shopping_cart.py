@@ -35,7 +35,7 @@ class ShoppingCartService:
     async def add_movie_to_cart(self, user: UserModel, movie_id: int) -> None:
         """Add movie to user's cart."""
         try:
-            cart = await self.get_cart(user)
+            cart = await self.get_or_create_cart(user)
             await validate_movie_exists(self.session, movie_id)
             await validate_movie_not_in_cart(self.session, cart.id, movie_id)
             await validate_movie_not_purchased(self.session, user.id, movie_id)
@@ -62,9 +62,15 @@ class ShoppingCartService:
 
     async def clear_cart(self, user: UserModel) -> None:
         """Clear user's cart."""
-        cart = await self.get_cart(user)
-        await self.session.delete(cart)
-        await self.session.commit()
+        cart = await self.get_or_create_cart(user)
+        query = select(CartItem).where(CartItem.cart_id == cart.id)
+        result = await self.session.execute(query)
+        items = result.scalars().all()
+
+        if items:
+            for item in items:
+                await self.session.delete(item)
+            await self.session.commit()
 
     async def get_cart(self, user: UserModel) -> Cart:
         """Get user's cart with all items."""
@@ -73,7 +79,9 @@ class ShoppingCartService:
         query = (
             select(Cart)
             .where(Cart.id == cart.id)
-            .options(selectinload(Cart.items).selectinload(CartItem.movie))
+            .options(
+                selectinload(Cart.items).selectinload(CartItem.movie)
+            )
         )
         result = await self.session.execute(query)
         cart = result.scalar_one()

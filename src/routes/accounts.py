@@ -37,8 +37,10 @@ from schemas import (
     TokenRefreshResponseSchema,
 )
 from schemas.accounts import (
+    ChangePasswordRequestSchema,
     GenerateActivationLinkRequestSchema,
 )
+from security.http import get_current_user
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -567,6 +569,92 @@ async def reset_password(
     )
 
     return MessageResponseSchema(message="Password reset successfully.")
+
+
+@router.post(
+    "/change-password/",
+    response_model=MessageResponseSchema,
+    summary="Change User Password",
+    description="Allows an authenticated user to change their password by providing the old and new passwords.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {
+            "description": "Unauthorized - The old password is invalid.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Invalid old password."}
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred while changing the password.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred while changing the password."
+                    }
+                }
+            },
+        },
+    },
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "old_password": "currentPassword123",
+                        "new_password": "newSecurePassword456",
+                    }
+                }
+            }
+        }
+    },
+)
+async def change_password(
+    change_password_data: ChangePasswordRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
+) -> MessageResponseSchema:
+    """
+    Change the current user's password.
+
+    This endpoint allows an authenticated user to change their
+    password by providing the old password and a new password.
+    The old password is verified before updating to the new password.
+    If the old password is incorrect, an error is returned.
+    On successful password change, a confirmation message is returned.
+
+    Args:
+        change_password_data (ChangePasswordRequestSchema): The request data containing the old and new passwords.
+        db (AsyncSession): The asynchronous database session.
+        user (UserModel): The currently authenticated user.
+
+    Returns:
+        MessageResponseSchema: A response message indicating successful password change.
+
+    Raises:
+        HTTPException:
+            - 401 Unauthorized if the old password is invalid.
+            - 500 Internal Server Error if an error occurs while changing the password.
+    """
+
+    if not user.verify_password(change_password_data.old_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid old password.",
+        )
+
+    try:
+        user.password = change_password_data.new_password
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while changing the password.",
+        )
+
+    return MessageResponseSchema(message="Password changed successfully.")
 
 
 @router.post(
