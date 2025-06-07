@@ -199,6 +199,8 @@ class StripePaymentService(PaymentService):
             self._construct_stripe_event, payload, sig_header
         )
 
+        payment = None
+
         if event["type"] == "checkout.session.completed":
             session = event["data"]["object"]
 
@@ -249,6 +251,37 @@ class StripePaymentService(PaymentService):
             await db.flush()
 
             order.status = OrderStatusEnum.PAID
+            await db.flush()
+        elif event["type"] == "charge.refunded":
+            session = event["data"]["object"]
+            payment_intent_id = session.get("payment_intent")
+            if not payment_intent_id:
+                raise ValueError(
+                    "No payment_intent found in charge.refunded event."
+                )
+
+            payment = await db.scalar(
+                select(PaymentModel).where(
+                    PaymentModel.external_payment_id == payment_intent_id
+                )
+            )
+            if payment is None:
+                raise ValueError(
+                    f"Payment with external_payment_id {payment_intent_id} not found in the database."
+                )
+            payment.status = PaymentStatusEnum.REFUNDED
+            await db.flush()
+
+            order = await db.scalar(
+                select(Order).where(Order.id == payment.order_id)
+            )
+
+            if not order:
+                raise ValueError(
+                    f"Order with id {payment.order_id} not found in the database."
+                )
+            order.status = OrderStatusEnum.CANCELED
+
             await db.flush()
 
         return payment
