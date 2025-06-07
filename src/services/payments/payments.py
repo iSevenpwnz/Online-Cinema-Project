@@ -98,13 +98,16 @@ class StripePaymentService(PaymentService):
     ]
 
     def __init__(
-        self, settings: BaseAppSettings, payment_method: StripePaymentMethod
+        self,
+        settings: BaseAppSettings,
+        payment_method: StripePaymentMethod | None,
     ) -> None:
         super().__init__()
         self.secret_key = settings.STRIPE_SECRET_KEY
         self.webhook_secret = settings.STRIPE_WEBHOOK_SECRET
 
-        self.payment_method: StripePaymentMethod = payment_method
+        if payment_method:
+            self.payment_method: StripePaymentMethod = payment_method
 
     @classmethod
     def validate_payment_method(cls, payment_method: str):

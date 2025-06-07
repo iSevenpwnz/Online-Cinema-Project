@@ -1,6 +1,7 @@
 import datetime
 import json
 from unittest.mock import patch, MagicMock
+from fastapi import Request
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -24,7 +25,11 @@ class MockStripePaymentService(PaymentService):
     async def create_payment_session(self, order: Order) -> str:
         return "http://test_session.com"
 
-    async def handle_event(self) -> PaymentModel | None:
+    async def handle_event(
+        self,
+        request: Request,
+        db: AsyncSession,
+    ) -> PaymentModel | None:
         raise NotImplementedError
 
 

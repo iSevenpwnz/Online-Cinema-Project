@@ -79,11 +79,11 @@ async def create_payment_session(
 async def handle_stripe_webhook_event(
     request: Request,
     settings: BaseAppSettings = Depends(get_settings),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stripe_service = StripePaymentService(settings, None)
 
-    result = await stripe_service.handle_event(request, db)
+    await stripe_service.handle_event(request, db)
 
     await db.commit()
 
