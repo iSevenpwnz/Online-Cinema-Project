@@ -25,6 +25,7 @@ from security.token_manager import JWTAuthManager
 from storages import S3StorageClient
 from tests.doubles.fakes.storage import FakeS3Storage
 from tests.doubles.stubs.emails import StubEmailSender
+from database.models import MovieModel, FavoriteMovie
 
 
 def pytest_configure(config):
@@ -289,3 +290,60 @@ def memory_session(memory_engine: Engine, memory_tables):
     session.close()
     transaction.rollback()
     connection.close()
+
+
+@pytest_asyncio.fixture
+async def test_movie(db_session):
+    from database.models.movies import CertificationModel, CertificationEnum
+
+    # Create certification if not exists
+    cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
+    db_session.add(cert)
+    await db_session.flush()
+
+    movie = MovieModel(
+        name="Test Movie",
+        year=2022,
+        imdb=8.0,
+        price=10.0,
+        description="desc",
+        certification_id=cert.id,
+        time=120,
+        votes=1000,
+        uuid="test-uuid-123",
+    )
+    db_session.add(movie)
+    await db_session.commit()
+    await db_session.refresh(movie)
+    return movie
+
+
+@pytest_asyncio.fixture
+async def test_movies(db_session, seed_active_user):
+    from database.models.movies import CertificationModel, CertificationEnum
+
+    # Create certification if not exists
+    cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
+    db_session.add(cert)
+    await db_session.flush()
+
+    movies = []
+    for i in range(3):
+        movie = MovieModel(
+            name=f"Test Movie {i}",
+            year=2020 + i,
+            imdb=7.0 + i,
+            price=10.0,
+            description="desc",
+            certification_id=cert.id,
+            time=120,
+            votes=1000,
+            uuid=f"test-uuid-{i}",
+        )
+        db_session.add(movie)
+        await db_session.flush()
+        fav = FavoriteMovie(user_id=seed_active_user.id, movie_id=movie.id)
+        db_session.add(fav)
+        movies.append(movie)
+    await db_session.commit()
+    return movies

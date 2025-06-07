@@ -197,9 +197,7 @@ async def rate_movie(
 
     await db.commit()
     return MovieRatingResponse(
-        movie_id=movie_id,
-        rating=data.rating,
-        message="Success"
+        movie_id=movie_id, rating=data.rating, message="Success"
     )
 
 
@@ -341,11 +339,7 @@ async def get_user_favorites(
         sort_column = MovieModel.price
     elif sort_by == "added_date":
         # Sort by when movie was added to favorites
-        query = query.join(
-            FavoriteMovie,
-            MovieModel.id == FavoriteMovie.movie_id,
-            isouter=False,
-        )
+        # FavoriteMovie is already joined above, no need to join again
         sort_column = (
             FavoriteMovie.id
         )  # Assuming id represents order of addition
