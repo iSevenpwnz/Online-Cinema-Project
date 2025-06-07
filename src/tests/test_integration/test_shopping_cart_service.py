@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import uuid
+from sqlalchemy import select
 
 from database.models.movies import (
     MovieModel,

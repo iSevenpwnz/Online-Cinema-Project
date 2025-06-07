@@ -4,9 +4,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 import uuid
+from typing import Optional
 
 from database import get_db, MovieModel
-from database import CertificationModel, GenreModel, StarModel, DirectorModel
+from database import GenreModel, StarModel, DirectorModel
 from schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
@@ -210,15 +211,6 @@ async def create_movie(
                 await db.flush()
             directors.append(director)
 
-        certification = await db.get(
-            CertificationModel, movie_data.certification_id
-        )
-        if not certification:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Certification with id '{movie_data.certification_id}' does not exist.",
-            )
-
         movie = MovieModel(
             uuid=movie_data.uuid,
             name=movie_data.name,
@@ -237,10 +229,23 @@ async def create_movie(
         )
         db.add(movie)
         await db.commit()
-        await db.refresh(
-            movie, ["genres", "stars", "directors", "certification"]
+        stmt = (
+            select(MovieModel)
+            .options(
+                joinedload(MovieModel.certification),
+                joinedload(MovieModel.genres),
+                joinedload(MovieModel.stars),
+                joinedload(MovieModel.directors),
+            )
+            .where(MovieModel.id == movie.id)
         )
-        return MovieDetailSchema.model_validate(movie)
+        result = await db.execute(stmt)
+        movie_db: Optional[MovieModel] = result.scalars().first()
+        if not movie_db:
+            raise HTTPException(
+                status_code=404, detail="Movie not found after creation."
+            )
+        return MovieDetailSchema.model_validate(movie_db)
 
     except IntegrityError:
         await db.rollback()

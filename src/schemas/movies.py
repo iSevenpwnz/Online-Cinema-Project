@@ -5,10 +5,10 @@ from pydantic import BaseModel, Field, field_validator
 
 # from database.models.movies import MovieStatusEnum
 from schemas.examples.movies import (
-    country_schema_example,
-    language_schema_example,
-    genre_schema_example,
-    actor_schema_example,
+    # country_schema_example,
+    # language_schema_example,
+    # genre_schema_example,
+    # actor_schema_example,
     movie_item_schema_example,
     movie_list_response_schema_example,
     movie_create_schema_example,
@@ -17,19 +17,19 @@ from schemas.examples.movies import (
 )
 
 
-class LanguageSchema(BaseModel):
-    id: int
-    name: str
+# class LanguageSchema(BaseModel):
+#     id: int
+#     name: str
 
-    model_config = {"from_attributes": True}
+#     model_config = {"from_attributes": True}
 
 
-class CountrySchema(BaseModel):
-    id: int
-    code: str
-    name: Optional[str]
+# class CountrySchema(BaseModel):
+#     id: int
+#     code: str
+#     name: Optional[str]
 
-    model_config = {"from_attributes": True}
+#     model_config = {"from_attributes": True}
 
 
 class GenreSchema(BaseModel):

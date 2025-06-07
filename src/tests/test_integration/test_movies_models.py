@@ -10,8 +10,8 @@ from database import (
     GenreModel,
     StarModel,
     DirectorModel,
-    CertificationModel,
 )
+from database.models.movies import CertificationModel, CertificationEnum
 
 
 @pytest.mark.asyncio
@@ -359,6 +359,7 @@ async def test_create_movie_and_related_models(client, db_session):
         "directors": ["Some Director"],
     }
     response = await client.post("/api/v1/theater/movies/", json=movie_data)
+    print(response.text)  # Для дебагу
     assert response.status_code == 201
     response_data = response.json()
     assert response_data["name"] == movie_data["name"]

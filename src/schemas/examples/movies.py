@@ -1,76 +1,74 @@
 movie_item_schema_example = {
-    "id": 9933,
-    "name": "The Swan Princess: A Royal Wedding",
-    "date": "2020-07-20",
-    "score": 70,
-    "overview": "Princess Odette and Prince Derek are going to a wedding at Princess Mei Li and her beloved Chen. "
-                "But evil forces are at stake and the wedding plans are tarnished and "
-                "true love has difficult conditions."
+    "id": 1,
+    "name": "The Matrix",
+    "year": 1999,
+    "imdb": 8.7,
+    "price": 120.0,
+    "description": "A computer hacker learns about the true nature of his reality.",
 }
 
 movie_list_response_schema_example = {
-    "movies": [
-        movie_item_schema_example
-    ],
-    "prev_page": "/theater/movies/?page=1&per_page=1",
-    "next_page": "/theater/movies/?page=3&per_page=1",
-    "total_pages": 9933,
-    "total_items": 9933
+    "movies": [movie_item_schema_example],
+    "prev_page": None,
+    "next_page": "/theater/movies/?page=2&per_page=1",
+    "total_pages": 10,
+    "total_items": 10,
 }
 
 movie_create_schema_example = {
-    "name": "New Movie",
-    "date": "2025-01-01",
-    "score": 85.5,
-    "overview": "An amazing movie.",
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
-    "country": "US",
-    "genres": ["Action", "Adventure"],
-    "actors": ["John Doe", "Jane Doe"],
-    "languages": ["English", "French"]
-}
-
-
-language_schema_example = {
-    "id": 1,
-    "name": "English"
-}
-
-country_schema_example = {
-    "id": 1,
-    "code": "US",
-    "name": "United States"
-}
-
-genre_schema_example = {
-    "id": 1,
-    "genre": "Comedy"
-}
-
-actor_schema_example = {
-    "id": 1,
-    "name": "JimmyFallon"
+    "uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "The Matrix",
+    "year": 1999,
+    "time": 136,
+    "imdb": 8.7,
+    "votes": 1700000,
+    "meta_score": 73.0,
+    "gross": 463517383.0,
+    "description": "A computer hacker learns about the true nature of his reality.",
+    "price": 120.0,
+    "certification_id": 1,
+    "genres": ["Action", "Sci-Fi"],
+    "stars": ["Keanu Reeves", "Laurence Fishburne"],
+    "directors": ["Lana Wachowski", "Lilly Wachowski"],
 }
 
 movie_detail_schema_example = {
-    **movie_item_schema_example,
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
-    "actors": [actor_schema_example],
-    "country": country_schema_example,
-    "genres": [genre_schema_example],
-    "languages": [language_schema_example]
+    "id": 1,
+    "uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "The Matrix",
+    "year": 1999,
+    "time": 136,
+    "imdb": 8.7,
+    "votes": 1700000,
+    "meta_score": 73.0,
+    "gross": 463517383.0,
+    "description": "A computer hacker learns about the true nature of his reality.",
+    "price": 120.0,
+    "certification_id": 1,
+    "certification": {"id": 1, "name": "R"},
+    "genres": [{"id": 1, "name": "Action"}, {"id": 2, "name": "Sci-Fi"}],
+    "stars": [
+        {"id": 1, "name": "Keanu Reeves"},
+        {"id": 2, "name": "Laurence Fishburne"},
+    ],
+    "directors": [
+        {"id": 1, "name": "Lana Wachowski"},
+        {"id": 2, "name": "Lilly Wachowski"},
+    ],
 }
 
 movie_update_schema_example = {
-    "name": "Update Movie",
-    "date": "2025-01-01",
-    "score": 85.5,
-    "overview": "An amazing movie.",
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
+    "name": "The Matrix Reloaded",
+    "year": 2003,
+    "time": 138,
+    "imdb": 7.2,
+    "votes": 600000,
+    "meta_score": 62.0,
+    "gross": 427343298.0,
+    "description": "The Matrix saga continues.",
+    "price": 130.0,
+    "certification_id": 1,
+    "genres": ["Action", "Sci-Fi"],
+    "stars": ["Keanu Reeves", "Carrie-Anne Moss"],
+    "directors": ["Lana Wachowski", "Lilly Wachowski"],
 }

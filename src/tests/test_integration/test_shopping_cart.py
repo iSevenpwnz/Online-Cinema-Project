@@ -1,12 +1,12 @@
 import pytest
 from datetime import datetime
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from database.models.shopping_cart import Cart, CartItem
 from database.models.movies import (
     MovieModel,
-    CertificationModel,
     CertificationEnum,
+    CertificationModel,
 )
 from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
 from database.models.base import Base

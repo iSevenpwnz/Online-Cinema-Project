@@ -9,8 +9,8 @@ from database import MovieModel
 from database import (
     GenreModel,
     StarModel,
-    CertificationModel,
 )
+from database.models.movies import CertificationModel, CertificationEnum
 
 
 @pytest.mark.asyncio
@@ -432,9 +432,9 @@ async def test_create_movie_and_related_models(client, db_session):
     Test that a new movie is created successfully and related models
     (genres, stars) are created if they do not exist.
     """
-    certification = CertificationModel(id=1, name="PG")
-    db_session.add(certification)
-    await db_session.commit()
+    cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
+    db_session.add(cert)
+    await db_session.flush()
 
     movie_data = {
         "uuid": str(uuid.uuid4()),
@@ -447,13 +447,14 @@ async def test_create_movie_and_related_models(client, db_session):
         "gross": 1000000.0,
         "description": "An amazing movie.",
         "price": 100.0,
-        "certification_id": 1,
+        "certification_id": cert.id,
         "genres": ["Action", "Adventure"],
         "stars": ["John Doe", "Jane Doe"],
         "directors": ["Some Director"],
     }
 
     response = await client.post("/api/v1/theater/movies/", json=movie_data)
+    print(response.text)  # Для дебагу
     assert (
         response.status_code == 201
     ), f"Expected status code 201, but got {response.status_code}"
