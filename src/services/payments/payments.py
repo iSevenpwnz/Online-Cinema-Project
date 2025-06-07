@@ -1,12 +1,21 @@
 from abc import ABC, abstractmethod, abstractstaticmethod
+import asyncio
 from decimal import Decimal
 from enum import Enum
 from typing import Literal, Type, cast
 
+from fastapi import Request
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from config.dependencies import get_settings
-from database.models.orders import Order
+from database.models.orders import Order, OrderStatusEnum
 from config.settings import BaseAppSettings
-from database.models.payments import PaymentModel
+from database.models.payments import (
+    PaymentItemModel,
+    PaymentModel,
+    PaymentStatusEnum,
+)
 
 from starlette.concurrency import run_in_threadpool
 
@@ -77,7 +86,9 @@ class PaymentService(ABC):
         pass
 
     @abstractmethod
-    async def handle_event(self) -> PaymentModel | None:
+    async def handle_event(
+        self, request: Request, db: AsyncSession
+    ) -> PaymentModel | None:
         pass
 
 
@@ -92,8 +103,6 @@ class StripePaymentService(PaymentService):
         super().__init__()
         self.secret_key = settings.STRIPE_SECRET_KEY
         self.webhook_secret = settings.STRIPE_WEBHOOK_SECRET
-
-        self.validate_payment_method(payment_method=payment_method)
 
         self.payment_method: StripePaymentMethod = payment_method
 
@@ -117,6 +126,7 @@ class StripePaymentService(PaymentService):
                             "name": order_item.movie.name,
                             "metadata": {
                                 "movie_id": str(order_item.movie.id),
+                                "order_item_id": str(order_item.id),
                             },
                         },
                         "unit_amount": int(
@@ -136,14 +146,112 @@ class StripePaymentService(PaymentService):
             success_url="https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}",
             # TODO: add url builder function and SUCCESS url to .env
             cancel_url="https://yourdomain.com/cancel",  # TODO: add cancel url,
+            metadata={"order_id": str(order.id)},
         )
+
+    def _construct_stripe_event(
+        self, payload: bytes, sig_header: str
+    ) -> stripe.Event:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, self.webhook_secret
+        )
+
+        return event
+
+    def _fetch_sessions_line_items(self, session: stripe.checkout.Session):
+        line_items_response = stripe.checkout.Session.list_line_items(
+            session["id"],
+            api_key=self.secret_key,
+        )
+
+        return line_items_response
+
+    def _fetch_order_item_id_from_line_item(self, line_item: stripe.LineItem):
+        price = line_item.get("price", {})
+        product = price.get("product")
+
+        if product:
+            product_obj = stripe.Product.retrieve(
+                product, api_key=self.secret_key
+            )
+            order_item_id = int(
+                product_obj.get("metadata", {}).get("order_item_id")
+            )
+
+        return order_item_id, price["unit_amount"]
 
     async def create_payment_session(self, order: Order) -> str:
         session = await run_in_threadpool(self._create_payment_session, order)
         return session.url
 
-    async def handle_event(self) -> PaymentModel | None:
-        raise NotImplementedError
+    async def handle_event(
+        self, request: Request, db: AsyncSession
+    ) -> PaymentModel | None:
+        payload = await request.body()
+        sig_header = request.headers.get("stripe-signature")
+
+        if not payload or not sig_header:
+            raise ValueError(
+                "Invalid Stripe webhook: missing payload or Stripe signature header."
+            )
+
+        event = await run_in_threadpool(
+            self._construct_stripe_event, payload, sig_header
+        )
+
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+
+            order_id = int(session["metadata"]["order_id"])
+            line_items = await run_in_threadpool(
+                self._fetch_sessions_line_items,
+                session,
+            )
+
+            order_item_ids_and_amount = await asyncio.gather(
+                *[
+                    run_in_threadpool(
+                        self._fetch_order_item_id_from_line_item, line_item
+                    )
+                    for line_item in line_items
+                ]
+            )
+
+            order = await db.scalar(select(Order).where(Order.id == order_id))
+
+            if order is None:
+                raise ValueError(
+                    f"Order with id {order_id} not found in the database."
+                )
+
+            payment = PaymentModel(
+                user_id=order.user_id,
+                order_id=order.id,
+                status=PaymentStatusEnum.SUCCESSFUL,
+                external_payment_id=session["payment_intent"],
+            )
+
+            db.add(payment)
+            await db.flush()
+
+            for (
+                order_item_id,
+                price_at_payment_cents,
+            ) in order_item_ids_and_amount:
+                payment_item = PaymentItemModel(
+                    payment_id=payment.id,
+                    order_item_id=order_item_id,
+                    price_at_payment=Decimal(price_at_payment_cents)
+                    / Decimal("100"),
+                )
+                db.add(payment_item)
+
+            await db.flush()
+
+            order.status = OrderStatusEnum.PAID
+            await db.flush()
+
+        return payment
 
 
 class PaymentServicesEnum(str, Enum):

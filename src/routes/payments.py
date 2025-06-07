@@ -1,11 +1,12 @@
 from typing import cast
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, routing, status
 from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from config.dependencies import get_settings
+from config.settings import BaseAppSettings
 from database.models.accounts import UserModel
 from database.models.orders import Order, OrderStatusEnum, OrderItem
 from schemas.payments import (
@@ -13,7 +14,11 @@ from schemas.payments import (
     CreatePaymentSessionResponseSchema,
 )
 from security.http import get_current_user
-from services.payments.payments import get_payment_service, PaymentServicesEnum
+from services.payments.payments import (
+    StripePaymentService,
+    get_payment_service,
+    PaymentServicesEnum,
+)
 
 from database import (
     get_db,
@@ -68,3 +73,18 @@ async def create_payment_session(
     return CreatePaymentSessionResponseSchema(
         session_url=cast(AnyUrl, session_url)
     )
+
+
+@router.post("/stripe/webhook")
+async def handle_stripe_webhook_event(
+    request: Request,
+    settings: BaseAppSettings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db)
+):
+    stripe_service = StripePaymentService(settings, None)
+
+    result = await stripe_service.handle_event(request, db)
+
+    await db.commit()
+
+    return {"message": "OK"}
