@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select, func, insert
+from sqlalchemy import select, func, insert, delete
 from sqlalchemy.orm import joinedload
 
 from database.models.movies import (
@@ -208,6 +208,16 @@ class TestStarEndpoints:
         )
         assert response.status_code == 200
         assert response.json()["name"] == new_name
+
+    @pytest.mark.asyncio
+    async def test_update_star_to_existing_name(self, client, db_session):
+        s1 = StarModel(name="StarA")
+        s2 = StarModel(name="StarB")
+        db_session.add_all([s1, s2])
+        await db_session.commit()
+        response = await client.put(f"/api/v1/theater/stars/{s1.id}", params={"new_name": s2.name})
+        assert response.status_code == 400
+        assert "already exists" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_delete_star_success(self, client, db_session, seed_database):
@@ -519,6 +529,15 @@ class TestMovieListing:
         assert len(data["movies"]) == 1
         assert data["movies"][0]["year"] == 2015
 
+    @pytest.mark.asyncio
+    async def test_get_movie_list_no_movies(self, client, db_session):
+        """No movies in DB -> 404"""
+        await db_session.execute(delete(MovieModel))
+        await db_session.commit()
+        response = await client.get("/api/v1/theater/movies/")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "No movies found."
+
 
 class TestMovieCRUD:
     """Test suite for movie CRUD operations"""
@@ -698,6 +717,33 @@ class TestMovieCRUD:
         response = await client.patch("/api/v1/theater/movies/999999/", json=update_data)
         assert response.status_code == 404
         assert response.json() == {"detail": "Movie not found"}
+
+    @pytest.mark.asyncio
+    async def test_update_movie_invalid_value(self, client, db_session):
+        """PATCH with invalid value"""
+        certification = CertificationModel(id=77, name="EdgeCert")
+        db_session.add(certification)
+        await db_session.commit()
+        movie = MovieModel(
+            uuid=str(uuid.uuid4()),
+            name="EdgeMovie",
+            year=2021,
+            time=100,
+            imdb=7.1,
+            votes=5,
+            meta_score=44,
+            gross=9,
+            description="bad",
+            price=9,
+            certification_id=77,
+        )
+        db_session.add(movie)
+        await db_session.commit()
+        update_data = {"price": "not_a_number"}
+        response = await client.patch(f"/api/v1/theater/movies/{movie.id}/", json=update_data)
+        assert response.status_code == 422
+        error_msgs = [err["msg"] for err in response.json().get("detail", [])]
+        assert any("valid decimal" in msg for msg in error_msgs)
 
     @pytest.mark.asyncio
     async def test_patch_movie_empty_payload(self, client, db_session, seed_database):
