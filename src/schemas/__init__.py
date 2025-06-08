@@ -21,3 +21,8 @@ from schemas.shopping_cart import (
     CartItemResponse,
     CartResponse
 )
+
+from schemas.orders import (
+    OrderItemResponse,
+    OrderResponse
+)
