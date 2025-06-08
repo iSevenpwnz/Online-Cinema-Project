@@ -1,9 +1,9 @@
-# Test deployment workflow for cd-settings branch
+# Production Deployment Pipeline
 name: Deploy to AWS EC2
 
 on:
   push:
-    branches: [main, develop, cd-testing, cd-settings]
+    branches: [main, develop, cd-settings]
   workflow_run:
     workflows: ["CI"]
     types:
@@ -11,7 +11,6 @@ on:
     branches:
       - main
       - develop
-      - cd-testing
       - cd-settings
 
 jobs:
@@ -54,16 +53,16 @@ jobs:
             REPO_URL="https://github.com/iSevenpwnz/Online-Cinema-Project.git"
             BRANCH="${{ github.head_ref || github.ref_name }}"
             
-            echo "Deploying branch: $BRANCH"
+            echo "🚀 Deploying branch: $BRANCH"
             
             # Clone repo if it doesn't exist or is empty
             if [ ! -d "$PROJECT_DIR/.git" ]; then
-              echo "Cloning repository..."
+              echo "📦 Cloning repository..."
               rm -rf "$PROJECT_DIR"
               git clone "$REPO_URL" "$PROJECT_DIR"
               cd "$PROJECT_DIR"
             else
-              echo "Repository exists, updating..."
+              echo "🔄 Repository exists, updating..."
               cd "$PROJECT_DIR"
               # Force fetch all refs to fix any conflicts
               git fetch origin --force --prune
@@ -73,46 +72,59 @@ jobs:
             fi
             
             # Checkout and reset to target branch (force)
-            echo "Checking out branch: $BRANCH"
+            echo "🔀 Checking out branch: $BRANCH"
             git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
             git reset --hard "origin/$BRANCH"
             
             # Deploy with docker compose
-            echo "Starting Docker containers..."
+            echo "🐳 Starting Docker containers..."
             
-            # Build new images first
-            docker compose -f docker-compose-prod.yml build
+            # Check if database migrations are needed
+            echo "🔍 Checking for database changes..."
+            if git diff HEAD~1 --name-only | grep -E "(models|migrations|database)" >/dev/null 2>&1; then
+              echo "📊 Database changes detected - full deployment"
+              
+              # Full deployment with migrations
+              docker compose -f docker-compose-prod.yml down web || true
+              docker compose -f docker-compose-prod.yml build
+              docker compose -f docker-compose-prod.yml up -d
+              
+              sleep 30
+            else
+              echo "⚡ Code-only changes - fast deployment"
+              
+              # Stop web service gracefully
+              echo "🛑 Stopping web service..."
+              docker compose -f docker-compose-prod.yml stop web || true
+              
+              # Build only web service (fastest)
+              echo "🔨 Building web service..."
+              docker compose -f docker-compose-prod.yml build web
+              
+              # Start web service
+              echo "🚀 Starting web service..."
+              docker compose -f docker-compose-prod.yml up -d web
+              
+              sleep 15
+            fi
             
-            # Check which services need restart
-            echo "Checking which services need updates..."
-            CHANGED_SERVICES=$(docker compose -f docker-compose-prod.yml config --services)
-            
-            # Restart only changed services (lazy approach)
-            for service in $CHANGED_SERVICES; do
-              echo "Updating service: $service"
-              docker compose -f docker-compose-prod.yml up -d --no-deps $service
-            done
-            
-            echo "Waiting for services to be ready..."
-            sleep 30
-            
-            echo "Checking service health..."
+            echo "🏥 Checking service health..."
             # Check if web service is responding
-            for i in {1..10}; do
+            for i in {1..5}; do
               if curl -f http://localhost:8000/docs >/dev/null 2>&1; then
                 echo "✅ Web service is healthy"
                 break
-              elif [ $i -eq 10 ]; then
+              elif [ $i -eq 5 ]; then
                 echo "❌ Web service failed to start"
                 docker compose -f docker-compose-prod.yml logs web
                 exit 1
               else
-                echo "Waiting for web service... attempt $i/10"
-                sleep 10
+                echo "⏳ Waiting for web service... attempt $i/5"
+                sleep 5
               fi
             done
             
-            echo "Deployment completed successfully for branch: $BRANCH"
+            echo "🎉 Deployment completed successfully for branch: $BRANCH"
           EOF
 
       - name: Deployment Success
@@ -120,3 +132,4 @@ jobs:
           echo "✅ Deployment successful!"
           echo "🚀 Application is running on the server"
           echo "🌐 Check: http://63.176.224.34"
+          echo "📖 API Docs: http://63.176.224.34:8000/docs"
