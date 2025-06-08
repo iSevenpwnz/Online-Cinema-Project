@@ -90,6 +90,12 @@ jobs:
             echo "Starting Docker containers..."
             docker compose -f docker-compose-prod.yml up -d --build
             
+            # Force rebuild nginx to reload config
+            echo "Rebuilding nginx with new config..."
+            docker compose -f docker-compose-prod.yml stop nginx
+            docker compose -f docker-compose-prod.yml rm -f nginx
+            docker compose -f docker-compose-prod.yml up -d --build nginx
+            
             # Wait for containers to be ready
             echo "Waiting for containers to start..."
             sleep 30
