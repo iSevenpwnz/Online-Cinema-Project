@@ -6,11 +6,23 @@ on:
     branches: [main, develop, cd-testing, cd-settings]
   pull_request:
     branches: [main, develop, cd-testing, cd-settings]
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+      - cd-testing
+      - cd-settings
 
 jobs:
   deploy:
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-
     steps:
       - name: Debug - Show trigger info
         run: |
@@ -20,6 +32,7 @@ jobs:
           echo "Head ref: ${{ github.head_ref }}"
           echo "Base ref: ${{ github.base_ref }}"
           echo "Is merged: ${{ github.event.pull_request.merged }}"
+          echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
 
       - name: Checkout Repository
         uses: actions/checkout@v3
