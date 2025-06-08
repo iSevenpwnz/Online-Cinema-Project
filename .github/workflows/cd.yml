@@ -9,7 +9,6 @@ on:
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true || github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.head_ref, 'cd-'))
     runs-on: ubuntu-latest
 
     steps:
