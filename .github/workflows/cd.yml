@@ -77,37 +77,22 @@ jobs:
             git reset --hard "origin/$BRANCH"
             
             # Deploy with docker compose
-            echo "🐳 Starting Docker containers..."
+            echo "🐳 Starting deployment..."
             
-            # Check if database migrations are needed
-            echo "🔍 Checking for database changes..."
-            if git diff HEAD~1 --name-only | grep -E "(models|migrations|database|requirements|poetry)" >/dev/null 2>&1; then
-              echo "📊 Database/Dependencies changes detected - full deployment"
-              
-              # Full deployment with migrations
-              docker compose -f docker-compose-prod.yml down || true
-              docker compose -f docker-compose-prod.yml build
-              docker compose -f docker-compose-prod.yml up -d
-              
-              sleep 30
-            else
-              echo "⚡ Code-only changes - ultra fast deployment"
-              
-              # Update code first
-              echo "📥 Updating code..."
-              git pull origin cd-settings
-              
-              # Just restart web container without rebuild (fastest possible)
-              echo "🔄 Restarting web service..."
-              docker compose -f docker-compose-prod.yml restart web
-              
-              sleep 10
-            fi
+            # Stop existing containers
+            docker compose -f docker-compose-prod.yml down || true
+            
+            # Build and start containers
+            docker compose -f docker-compose-prod.yml build
+            docker compose -f docker-compose-prod.yml up -d
+            
+            # Wait for services to start
+            sleep 30
             
             echo "🏥 Checking service health..."
             # Check if web service is responding
             for i in {1..5}; do
-              if curl -f http://localhost:8000/docs >/dev/null 2>&1; then
+              if curl -f http://localhost:8000/api/v1/docs >/dev/null 2>&1; then
                 echo "✅ Web service is healthy"
                 break
               elif [ $i -eq 5 ]; then
@@ -116,7 +101,7 @@ jobs:
                 exit 1
               else
                 echo "⏳ Waiting for web service... attempt $i/5"
-                sleep 5
+                sleep 10
               fi
             done
             

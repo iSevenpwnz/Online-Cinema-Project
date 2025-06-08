@@ -90,17 +90,6 @@ def custom_openapi():
 
 app.openapi = custom_openapi  # type: ignore
 
-
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "version": "1.0.1",
-        "message": "Ultra fast deploy test!",
-    }
-
-
 # Include routers
 app.include_router(
     accounts_router, prefix=f"{api_version_prefix}/accounts", tags=["accounts"]
