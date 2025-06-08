@@ -102,5 +102,9 @@ jobs:
             echo "Checking web container logs:"
             docker logs backend_theater --tail 20
             
+            # Check nginx container logs
+            echo "Checking nginx container logs:"
+            docker logs nginx --tail 20
+            
             echo "Deployment completed successfully for branch: $BRANCH"
           EOF
