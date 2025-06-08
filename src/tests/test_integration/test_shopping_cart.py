@@ -1,9 +1,16 @@
 # type: ignore
 import pytest
 from datetime import datetime
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
 from database.models.shopping_cart import Cart, CartItem
-from database.models.movies import MovieModel, CertificationModel, CertificationEnum
-from database.models.accounts import UserModel
+from database.models.movies import (
+    MovieModel,
+    CertificationEnum,
+    CertificationModel,
+)
+from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
+from database.models.base import Base
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.conftest import client, db_session, seed_user_groups

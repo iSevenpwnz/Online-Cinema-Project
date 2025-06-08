@@ -21,3 +21,8 @@ from schemas.shopping_cart import (
     CartItemResponse,
     CartResponse
 )
+from schemas.extra_functionality_movie import (
+    LikeDislikeSchema,
+    FavoriteSchema,
+    MovieRatingSchema
+)
