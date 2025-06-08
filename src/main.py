@@ -6,7 +6,9 @@ from routes import (
     movie_router,
     accounts_router,
     profiles_router,
-    shopping_cart_router
+    payments_router,
+    shopping_cart_router,
+    extra_functionality_movie_router,
 )
 
 app = FastAPI(
@@ -39,7 +41,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url=None,  # Disable default docs URL
     redoc_url=None,  # Disable default redoc URL
-    openapi_url="/api/v1/openapi.json"
+    openapi_url="/api/v1/openapi.json",
 )
 
 api_version_prefix = "/api/v1"
@@ -89,7 +91,21 @@ def custom_openapi():
 app.openapi = custom_openapi  # type: ignore
 
 # Include routers
-app.include_router(accounts_router, prefix=f"{api_version_prefix}/accounts", tags=["accounts"])
-app.include_router(profiles_router, prefix=f"{api_version_prefix}/profiles", tags=["profiles"])
-app.include_router(movie_router, prefix=f"{api_version_prefix}/theater", tags=["theater"])
-app.include_router(shopping_cart_router, prefix=f"{api_version_prefix}/cart", tags=["cart"])
+app.include_router(
+    accounts_router, prefix=f"{api_version_prefix}/accounts", tags=["accounts"]
+)
+app.include_router(
+    profiles_router, prefix=f"{api_version_prefix}/profiles", tags=["profiles"]
+)
+app.include_router(
+    movie_router, prefix=f"{api_version_prefix}/theater", tags=["theater"]
+)
+app.include_router(
+    shopping_cart_router, prefix=f"{api_version_prefix}/cart", tags=["cart"]
+)
+app.include_router(payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"])
+app.include_router(
+    extra_functionality_movie_router,
+    prefix=f"{api_version_prefix}/extra_functionality",
+    tags=["extra_functionality"],
+)

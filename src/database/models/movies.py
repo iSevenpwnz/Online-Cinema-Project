@@ -1,5 +1,6 @@
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Column,
@@ -16,6 +17,8 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
 
+if TYPE_CHECKING:
+    from .extra_functionality_movie import FavoriteMovie, MovieRating
 
 movie_genres = Table(
     "movie_genres",
@@ -165,6 +168,12 @@ class MovieModel(Base):
     )
     directors: Mapped[list["DirectorModel"]] = relationship(
         "DirectorModel", secondary=movie_directors, back_populates="movies"
+    )
+    favorited_by: Mapped[list["FavoriteMovie"]] = relationship(
+        "FavoriteMovie", back_populates="movie", cascade="all, delete-orphan"
+    )
+    ratings: Mapped[list["MovieRating"]] = relationship(
+        "MovieRating", back_populates="movie", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
