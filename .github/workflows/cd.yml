@@ -5,6 +5,7 @@ on:
   push:
     branches: [main, develop, cd-setting]
 
+
   workflow_run:
     workflows: ["CI"]
     types:
@@ -45,18 +46,15 @@ jobs:
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server
-        env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
-          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
         run: |
+          BRANCH="${{ github.head_ref || github.ref_name }}"
           echo "Deploying branch: $BRANCH"
-          echo "Repository URL: $REPO_URL"
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
             
             PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
-            REPO_URL="$REPO_URL"
-            BRANCH="$BRANCH"
+            REPO_URL="https://github.com/iSevenpwnz/Online-Cinema-Project.git"
+            BRANCH="${{ github.head_ref || github.ref_name }}"
             
             echo "Deploying branch: $BRANCH"
             
