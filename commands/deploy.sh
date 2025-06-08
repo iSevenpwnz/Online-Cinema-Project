@@ -7,7 +7,9 @@ handle_error() {
     exit 1
 }
 
-BRANCH="${DEPLOY_BRANCH:-cd-settings}"
+# Use the branch passed from GitHub Actions, fallback to main if not set
+BRANCH="${DEPLOY_BRANCH:-main}"
+echo "Deploying branch: $BRANCH"
 
 cd /home/ubuntu/src/online-cinema-project || handle_error "Failed to navigate to the application directory."
 
@@ -20,6 +22,7 @@ git reset --hard origin/$BRANCH || handle_error "Failed to reset the local repos
 echo "Fetching tags from the remote repository..."
 git fetch origin --tags || handle_error "Failed to fetch tags from the 'origin' remote."
 
+echo "Building and starting Docker containers..."
 docker compose -f docker-compose-prod.yml up -d --build || handle_error "Failed to build and run Docker containers using docker-compose-prod.yml."
 
-echo "Deployment completed successfully."
+echo "Deployment completed successfully for branch: $BRANCH"
