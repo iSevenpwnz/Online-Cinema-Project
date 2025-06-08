@@ -1,16 +1,17 @@
 name: Deploy to AWS EC2
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  push:
     branches:
       - develop
-      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - develop
+
 jobs:
   deploy:
-    if: github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'develop')
+    if: github.event.pull_request.merged == true || github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
@@ -24,9 +25,9 @@ jobs:
 
       - name: Add EC2 Host to known_hosts
         run: |
-          ssh-keyscan -p 1313 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Execute Deployment Script on EC2
         run: |
-          ssh -p 1313 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
                 'bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh'
