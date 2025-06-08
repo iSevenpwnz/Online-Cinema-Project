@@ -5,7 +5,6 @@ on:
   push:
     branches: [main, develop, cd-setting]
 
-
   workflow_run:
     workflows: ["CI"]
     types:
@@ -49,7 +48,7 @@ jobs:
         run: |
           BRANCH="${{ github.head_ref || github.ref_name }}"
           echo "Deploying branch: $BRANCH"
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
             
             PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
