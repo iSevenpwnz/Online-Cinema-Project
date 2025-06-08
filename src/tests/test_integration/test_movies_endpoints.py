@@ -273,6 +273,73 @@ class TestMovieListing:
         returned_movie_ids = [movie["id"] for movie in response_data["movies"]]
         assert returned_movie_ids == expected_movie_ids
 
+    async def test_sorting(self, client, db_session):
+        """Test different sorting options"""
+        movies_data = [
+            {
+                "name": "Cheap",
+                "price": 5,
+                "year": 2020,
+                "imdb": 7.0,
+                "time": 120,
+                "votes": 1000,
+                "description": "Test",
+                "certification_id": 1,
+                "uuid": str(uuid.uuid4())
+            },
+            {
+                "name": "Medium",
+                "price": 10,
+                "year": 2015,
+                "imdb": 8.0,
+                "time": 110,
+                "votes": 2000,
+                "description": "Test",
+                "certification_id": 1,
+                "uuid": str(uuid.uuid4())
+            },
+            {
+                "name": "Expensive",
+                "price": 15,
+                "year": 2010,
+                "imdb": 9.0,
+                "time": 100,
+                "votes": 3000,
+                "description": "Test",
+                "certification_id": 1,
+                "uuid": str(uuid.uuid4())
+            },
+        ]
+
+        for data in movies_data:
+            movie = MovieModel(
+                uuid=data["uuid"],
+                name=data["name"],
+                year=data["year"],
+                time=data["time"],
+                imdb=data["imdb"],
+                votes=data["votes"],
+                description=data["description"],
+                price=data["price"],
+                certification_id=data["certification_id"]
+            )
+            db_session.add(movie)
+        await db_session.commit()
+
+        response = await client.get("/api/v1/theater/movies/?sort_by=price")
+        data = response.json()
+        assert [float(m["price"]) for m in data["movies"]] == [5.0, 10.0, 15.0]
+
+        response = await client.get("/api/v1/theater/movies/?sort_by=year")
+        data = response.json()
+        assert [m["year"] for m in data["movies"]] == [2010, 2015, 2020]
+
+        response = await client.get("/api/v1/theater/movies/?sort_by=imdb")
+        data = response.json()
+        assert [m["imdb"] for m in data["movies"]] == [7.0, 8.0, 9.0]
+
+
+
     @pytest.mark.asyncio
     async def test_get_movies_custom_pagination(self, client, seed_database):
         """
@@ -385,6 +452,72 @@ class TestMovieListing:
             stars_contains = any("Test" in s.get("name", "") for s in m.get("stars", []))
             directors_contains = any("Test" in d.get("name", "") for d in m.get("directors", []))
             assert any([name_contains, description_contains, stars_contains, directors_contains])
+
+    async def test_filter_by_imdb(self, client, db_session):
+        """Test filtering by IMDB rating"""
+        certification = CertificationModel(id=1, name="PG")
+        star = StarModel(name="Test Star")
+        director = DirectorModel(name="Test Director")
+        db_session.add_all([certification, star, director])
+        await db_session.commit()
+
+        for rating in [6.0, 7.0, 8.0]:
+            movie = MovieModel(
+                uuid=str(uuid.uuid4()),
+                name=f"Movie {rating}",
+                year=2020,
+                time=120,
+                imdb=rating,
+                votes=100,
+                meta_score=85,
+                gross=5000000,
+                description="This is a test description",
+                price=15.0,
+                certification_id=certification.id,
+                stars=[star],
+                directors=[director],
+            )
+            db_session.add(movie)
+        await db_session.commit()
+
+        response = await client.get("/api/v1/theater/movies/?filter_by=7.5")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["movies"]) == 1
+        assert data["movies"][0]["imdb"] == 8.0
+
+    async def test_filter_by_year(self, client, db_session):
+        """Test filtering by year"""
+        certification = CertificationModel(id=1, name="PG")
+        star = StarModel(name="Test Star")
+        director = DirectorModel(name="Test Director")
+        db_session.add_all([certification, star, director])
+        await db_session.commit()
+
+        for year in [2010, 2015, 2020]:
+            movie = MovieModel(
+                uuid=str(uuid.uuid4()),
+                name=f"Some Movie",
+                year=year,
+                time=120,
+                imdb=8.3,
+                votes=100,
+                meta_score=85,
+                gross=5000000,
+                description="This is a test description",
+                price=15.0,
+                certification_id=certification.id,
+                stars=[star],
+                directors=[director],
+            )
+            db_session.add(movie)
+        await db_session.commit()
+
+        response = await client.get("/api/v1/theater/movies/?filter_by=2015")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["movies"]) == 1
+        assert data["movies"][0]["year"] == 2015
 
 
 class TestMovieCRUD:
