@@ -93,6 +93,10 @@ jobs:
             else
               echo "⚡ Code-only changes - ultra fast deployment"
               
+              # Update code first
+              echo "📥 Updating code..."
+              git pull origin cd-settings
+              
               # Just restart web container without rebuild (fastest possible)
               echo "🔄 Restarting web service..."
               docker compose -f docker-compose-prod.yml restart web
