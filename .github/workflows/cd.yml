@@ -1,43 +1,32 @@
-name: CD
+name: Deploy to AWS EC2
 
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
-  workflow_dispatch:
-
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - develop
+      - main
 jobs:
   deploy:
+    if: github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'develop')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.5.4
         with:
-          python-version: '3.11'
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Install Poetry
+      - name: Add EC2 Host to known_hosts
         run: |
-          pip install poetry
+          ssh-keyscan -p 1313 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Install dependencies
+      - name: Execute Deployment Script on EC2
         run: |
-          poetry install --no-interaction --no-root
-
-      - name: Run tests
-        run: |
-          poetry run pytest src/tests/test_integration/ -n auto --cov=. --cov-append --cov-report=xml
-
-      - name: Deploy to EC2
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          echo "$EC2_SSH_KEY" > ec2_key.pem
-          chmod 600 ec2_key.pem
-          ssh -o StrictHostKeyChecking=no -i ec2_key.pem $EC2_USER@$EC2_HOST 'bash -s' < ./commands/deploy.sh
+          ssh -p 1313 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                'bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh'
