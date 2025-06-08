@@ -3,8 +3,7 @@ name: Deploy to AWS EC2
 
 on:
   push:
-    branches: [main, develop, cd-settings]
-
+    branches: [main, develop, cd-setting]
 
   workflow_run:
     workflows: ["CI"]
@@ -13,7 +12,7 @@ on:
     branches:
       - main
       - develop
-      - cd-settings
+      - cd-setting
 
 jobs:
   deploy:
@@ -49,12 +48,12 @@ jobs:
         run: |
           BRANCH="${{ github.head_ref || github.ref_name }}"
           echo "Deploying branch: $BRANCH"
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
             
             PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
             REPO_URL="https://github.com/iSevenpwnz/Online-Cinema-Project.git"
-            BRANCH="${{ github.head_ref || github.ref_name }}"
+            BRANCH="$BRANCH"
             
             echo "Deploying branch: $BRANCH"
             
