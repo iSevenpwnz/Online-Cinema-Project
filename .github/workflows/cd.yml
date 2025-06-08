@@ -5,7 +5,7 @@ on:
   push:
     branches: [main, develop, cd-setting]
 
-  workflow_run:
+ику  workflow_run:
     workflows: ["CI"]
     types:
       - completed
@@ -48,16 +48,19 @@ jobs:
         run: |
           BRANCH="${{ github.head_ref || github.ref_name }}"
           REPO_URL="https://github.com/iSevenpwnz/Online-Cinema-Project.git"
+          PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
           echo "Deploying branch: $BRANCH"
           echo "Repository URL: $REPO_URL"
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
             
-            PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
+            PROJECT_DIR="$PROJECT_DIR"
             REPO_URL="$REPO_URL"
             BRANCH="$BRANCH"
             
-            echo "Deploying branch: $BRANCH"
+            echo "Deploying branch: \$BRANCH"
+            echo "Project directory: \$PROJECT_DIR"
+            echo "Repository URL: \$REPO_URL"
             
             # Create project directory if it doesn't exist
             mkdir -p "$(dirname "$PROJECT_DIR")"
