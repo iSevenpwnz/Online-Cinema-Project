@@ -81,31 +81,23 @@ jobs:
             
             # Check if database migrations are needed
             echo "🔍 Checking for database changes..."
-            if git diff HEAD~1 --name-only | grep -E "(models|migrations|database)" >/dev/null 2>&1; then
-              echo "📊 Database changes detected - full deployment"
+            if git diff HEAD~1 --name-only | grep -E "(models|migrations|database|requirements|poetry)" >/dev/null 2>&1; then
+              echo "📊 Database/Dependencies changes detected - full deployment"
               
               # Full deployment with migrations
-              docker compose -f docker-compose-prod.yml down web || true
+              docker compose -f docker-compose-prod.yml down || true
               docker compose -f docker-compose-prod.yml build
               docker compose -f docker-compose-prod.yml up -d
               
               sleep 30
             else
-              echo "⚡ Code-only changes - fast deployment"
+              echo "⚡ Code-only changes - ultra fast deployment"
               
-              # Stop web service gracefully
-              echo "🛑 Stopping web service..."
-              docker compose -f docker-compose-prod.yml stop web || true
+              # Just restart web container without rebuild (fastest possible)
+              echo "🔄 Restarting web service..."
+              docker compose -f docker-compose-prod.yml restart web
               
-              # Build only web service (fastest)
-              echo "🔨 Building web service..."
-              docker compose -f docker-compose-prod.yml build web
-              
-              # Start web service
-              echo "🚀 Starting web service..."
-              docker compose -f docker-compose-prod.yml up -d web
-              
-              sleep 15
+              sleep 10
             fi
             
             echo "🏥 Checking service health..."
