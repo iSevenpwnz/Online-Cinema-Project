@@ -18,8 +18,8 @@ from schemas.movies import (
     MovieDetailSchema,
     MovieCreateSchema,
     MovieUpdateSchema,
-    MovieListSchema,
-    MovieListPaginatedSchema,
+    MovieListItemSchema ,
+    MovieListResponseSchema,
     GenreWithCountSchema,
     GenreSchema,
     StarSchema,
@@ -33,7 +33,7 @@ router = APIRouter()
 @router.get(
     "/movies/",
     tags=["Movies"],
-    response_model=MovieListPaginatedSchema,
+    response_model=MovieListResponseSchema,
     summary="Get a paginated list of movies, with search, filter, sort_by options",
     description=(
         "<h3>This endpoint retrieves a paginated list of movies from the database. </h3> "
@@ -85,7 +85,7 @@ async def get_movie_list(
         None,
         description="Search movies by title, description, stars, or director."
     ),
-) -> MovieListPaginatedSchema:
+) -> MovieListResponseSchema:
     """
     Fetch a paginated list of movies from the database (asynchronously).
     """
@@ -136,7 +136,7 @@ async def get_movie_list(
         raise HTTPException(status_code=404, detail="No movies found.")
 
     movie_list = [
-        MovieListSchema(
+        MovieListItemSchema(
             id=movie.id,
             name=movie.name,
             year=movie.year,
@@ -149,7 +149,7 @@ async def get_movie_list(
 
     total_pages = (total_items + page_size - 1) // page_size
 
-    return MovieListPaginatedSchema(
+    return MovieListResponseSchema(
         movies=movie_list,
         prev_page=(
             f"/movies/?page={page - 1}&page_size={page_size}"
@@ -310,7 +310,7 @@ async def get_genres_with_counts(
 @router.get(
     "/genres/{genre_id}/movies",
     tags=["Genres"],
-    response_model=MovieListPaginatedSchema,
+    response_model=MovieListResponseSchema,
     summary="Get movies by genre ID",
     responses={
         200: {
@@ -381,7 +381,7 @@ async def get_movies_by_genre(
     total_pages = (total_items + page_size - 1) // page_size
 
     movie_list = [
-        MovieListSchema(
+        MovieListItemSchema(
             id=movie.id,
             name=movie.name,
             year=movie.year,
@@ -392,7 +392,7 @@ async def get_movies_by_genre(
         for movie in movies
     ]
 
-    return MovieListPaginatedSchema(
+    return MovieListResponseSchema(
         movies=movie_list,
         prev_page=(
             f"/genres/{genre_id}/movies?page={page - 1}&page_size={page_size}"

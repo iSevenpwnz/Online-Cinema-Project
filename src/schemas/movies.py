@@ -169,7 +169,7 @@ class MovieDetailSchema(MovieBaseSchema):
     }
 
 
-class MovieListSchema(BaseModel):
+class MovieListItemSchema (BaseModel):
 
     id: int
     name: str = Field(..., max_length=250, min_length=1)
@@ -188,13 +188,13 @@ class MovieListSchema(BaseModel):
     }
 
 
-class MovieListPaginatedSchema(BaseModel):
-    movies: List[MovieListSchema]
+class MovieListResponseSchema(BaseModel):
+    movies: List[MovieListItemSchema]
 
     prev_page: Optional[str] = None
     next_page: Optional[str] = None
 
-    total_pages: int = Field(..., ge=1)
+    total_pages: int = Field(..., ge=0)
     total_items: int = Field(..., ge=0)
 
 

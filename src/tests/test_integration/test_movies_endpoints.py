@@ -7,7 +7,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, func, insert, delete
 from sqlalchemy.orm import joinedload
-
+from database.models.orders import Order, OrderItem, OrderStatusEnum
 from database.models.movies import (
     MovieModel,
     GenreModel,
@@ -67,6 +67,13 @@ class TestGenreEndpoints:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_create_genre_trimmed_and_normalized(self, client):
+        """Whitespace should be trimmed in genre creation"""
+        response = await client.post("/api/v1/theater/genres/", params={"genre_name": "  New Genre  "})
+        assert response.status_code == 200
+        assert response.json()["name"].strip() == "New Genre"
+
+    @pytest.mark.asyncio
     async def test_update_genre_success(self, client, db_session, seed_database):
         """
         Test successful genre name update.
@@ -97,6 +104,13 @@ class TestGenreEndpoints:
         assert "already exists" in response.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_update_genre_not_found(self, client):
+        """Should return 404 if genre not found"""
+        response = await client.put("/api/v1/theater/genres/999999", params={"new_name": "New Genre"})
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Genre not found."
+
+    @pytest.mark.asyncio
     async def test_delete_genre_success(self, client, db_session, seed_database):
         """
         Test successful genre deletion.
@@ -105,6 +119,13 @@ class TestGenreEndpoints:
         genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
         response = await client.delete(f"/api/v1/theater/genres/{genre.id}")
         assert response.status_code in (200, 204)
+
+    @pytest.mark.asyncio
+    async def test_delete_genre_not_found(self, client):
+        """Should return 404 if genre not found"""
+        response = await client.delete("/api/v1/theater/genres/999999")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Genre not found."
 
     @pytest.mark.asyncio
     async def test_get_movies_by_genre_success(self, client, db_session, seed_database):
@@ -137,6 +158,22 @@ class TestGenreEndpoints:
         response = await client.get(f"/api/v1/theater/genres/{genre_id}/movies")
         assert response.status_code == 404 or response.json().get("movies") == []
 
+    @pytest.mark.asyncio
+    async def test_genres_search_filter(self, client, db_session):
+        """Search genre by name"""
+        g = GenreModel(name="Superhero")
+        db_session.add(g)
+        await db_session.commit()
+        resp = await client.get("/api/v1/theater/genres/?search=super")
+        assert resp.status_code == 200
+        assert any("Superhero" in genre["name"] for genre in resp.json())
+
+    @pytest.mark.asyncio
+    async def test_delete_genre_with_movies_linked(self, client, db_session, seed_database):
+        genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
+        response = await client.delete(f"/api/v1/theater/genres/{genre.id}")
+        assert response.status_code == 200
+
 
 class TestStarEndpoints:
     """Test suite for star-related API endpoints"""
@@ -162,6 +199,13 @@ class TestStarEndpoints:
         await client.post("/api/v1/theater/stars/", params={"star_name": star_name})
         response = await client.post("/api/v1/theater/stars/", params={"star_name": star_name})
         assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_create_star_trimmed_and_normalized(self, client):
+        """Whitespace should be trimmed in star creation"""
+        response = await client.post("/api/v1/theater/stars/", params={"star_name": "  Chris Hemsworth  "})
+        assert response.status_code == 200
+        assert response.json()["name"].strip() == "Chris Hemsworth"
 
     @pytest.mark.asyncio
     async def test_get_stars_list(self, client, db_session, seed_database):
@@ -195,6 +239,13 @@ class TestStarEndpoints:
         assert "movie" in response.json()
 
     @pytest.mark.asyncio
+    async def test_get_star_detail_not_found(self, client):
+        """Should return 404 if star not found"""
+        response = await client.get("/api/v1/theater/stars/999999")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Star not found."
+
+    @pytest.mark.asyncio
     async def test_update_star_success(self, client, db_session, seed_database):
         """
         Test successful star name update.
@@ -218,6 +269,13 @@ class TestStarEndpoints:
         response = await client.put(f"/api/v1/theater/stars/{s1.id}", params={"new_name": s2.name})
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_update_star_not_found(self, client):
+        """Should return 404 if star not found"""
+        response = await client.put("/api/v1/theater/stars/999999", params={"new_name": "New Star"})
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Star not found."
 
     @pytest.mark.asyncio
     async def test_delete_star_success(self, client, db_session, seed_database):
@@ -267,6 +325,13 @@ class TestMovieListing:
         assert response_data["prev_page"] is None
         if response_data["total_pages"] > 1:
             assert response_data["next_page"] is not None
+
+    @pytest.mark.asyncio
+    async def test_get_movie_by_id_success(self, client, db_session, seed_database):
+        movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
+        response = await client.get(f"/api/v1/theater/movies/{movie.id}/")
+        assert response.status_code == 200
+        assert response.json()["id"] == movie.id
 
     @pytest.mark.asyncio
     async def test_get_movies_sorted_correctly(self, client, db_session, seed_database):
@@ -538,6 +603,19 @@ class TestMovieListing:
         assert response.status_code == 404
         assert response.json()["detail"] == "No movies found."
 
+    @pytest.mark.asyncio
+    async def test_get_movies_combined_filter_sort_search(self,client, db_session):
+        response = await client.get(
+            "/api/v1/theater/movies/?filter_by=2023&search=Test&sort_by=price"
+        )
+        assert response.status_code in (200, 404)
+
+    @pytest.mark.asyncio
+    async def test_get_movies_by_genre_pagination(self, client, db_session, seed_database):
+        genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
+        response = await client.get(f"/api/v1/theater/genres/{genre.id}/movies?page=2&page_size=1")
+        assert response.status_code in (200, 404)
+
 
 class TestMovieCRUD:
     """Test suite for movie CRUD operations"""
@@ -746,6 +824,21 @@ class TestMovieCRUD:
         assert any("valid decimal" in msg for msg in error_msgs)
 
     @pytest.mark.asyncio
+    async def test_update_movie_with_normalized_lists(self, client, db_session, seed_database):
+        movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
+        payload = {
+            "genres": ["  comedy  ", "DRAMA"],
+            "stars": ["    john DOE  "],
+            "directors": ["Quentin TARANTINO"]
+        }
+        response = await client.patch(f"/api/v1/theater/movies/{movie.id}/", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "Comedy" in data["genres"]
+        assert "Drama" in data["genres"]
+        assert "John Doe" in data["stars"]
+
+    @pytest.mark.asyncio
     async def test_patch_movie_empty_payload(self, client, db_session, seed_database):
         """
         Test updating movie with empty payload.
@@ -757,6 +850,21 @@ class TestMovieCRUD:
             json={}
         )
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_patch_movie_strip_fields(self, client, db_session, seed_database):
+        """Ensure genres/stars/directors are normalized and trimmed"""
+        movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
+        data = {
+            "genres": ["  action  "],
+            "stars": ["  bruce willis  "],
+            "directors": ["  michael bay  "]
+        }
+        resp = await client.patch(f"/api/v1/theater/movies/{movie.id}/", json=data)
+        assert resp.status_code == 200
+        assert "Action" in resp.json()["genres"]
+        assert "Bruce Willis" in resp.json()["stars"]
+        assert "Michael Bay" in resp.json()["directors"]
 
     @pytest.mark.asyncio
     async def test_delete_movie_success(self, client, db_session, seed_database):
@@ -794,17 +902,21 @@ class TestMovieCRUD:
         db_session.add(movie)
         await db_session.commit()
 
-
         order = Order(
             user_id=1,
             created_at=datetime.date.today(),
             status=OrderStatusEnum.PAID,
-            total_amount=10,
+            total_amount=movie.price
         )
         db_session.add(order)
         await db_session.commit()
+        await db_session.refresh(order)  # Щоб отримати order.id
 
-        order_item = OrderItem(order_id=order.id, movie_id=movie.id)
+        order_item = OrderItem(
+            order_id=order.id,
+            movie_id=movie.id,
+            price_at_order=movie.price
+        )
         db_session.add(order_item)
         await db_session.commit()
 
@@ -813,7 +925,6 @@ class TestMovieCRUD:
         assert response.json() == {
             "detail": "Cannot delete movie - it appears in paid orders."
         }
-
 
         existing_movie = await db_session.get(MovieModel, movie.id)
         assert existing_movie is not None
@@ -838,7 +949,7 @@ class TestMovieValidation:
         Test creating movie with invalid IMDB rating.
         Should return 422 Unprocessable Entity when IMDB rating is invalid (>10).
         """
-        certification = CertificationModel(id=3, name="12A")
+        certification = CertificationModel(id=3, name="PG")
         db_session.add(certification)
         await db_session.commit()
 
@@ -867,7 +978,7 @@ class TestMovieValidation:
         Test creating movie with invalid duration.
         Should return 422 Unprocessable Entity when duration is too short.
         """
-        certification = CertificationModel(id=4, name="15")
+        certification = CertificationModel(id=4, name="PG")
         db_session.add(certification)
         await db_session.commit()
 

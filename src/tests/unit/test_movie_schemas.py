@@ -6,8 +6,8 @@ from datetime import datetime
 from schemas.movies import (
     GenreSchema, GenreWithCountSchema, StarSchema, StarDetailSchema,
     DirectorSchema, DirectorDetailSchema, CertificationSchema,
-    MovieBaseSchema, MovieDetailSchema, MovieListSchema,
-    MovieListPaginatedSchema, MovieCreateSchema, MovieUpdateSchema
+    MovieBaseSchema, MovieDetailSchema, MovieListItemSchema ,
+    MovieListResponseSchema, MovieCreateSchema, MovieUpdateSchema
 )
 
 
@@ -225,11 +225,11 @@ def test_movie_update_schema_forbid_extra_fields():
 
 def test_movie_list_paginated_schema_valid():
     """
-    MovieListPaginatedSchema: pagination should be valid
+    MovieListResponseSchema: pagination should be valid
     """
-    schema = MovieListPaginatedSchema(
+    schema = MovieListResponseSchema(
         movies=[
-            MovieListSchema(
+            MovieListItemSchema (
                 id=1,
                 name="Test",
                 year=2023,
@@ -248,30 +248,18 @@ def test_movie_list_paginated_schema_valid():
         f"Expected first genre name to be 'Comedy', got: {schema.movies[0].genres[0]}"
     )
 
-def test_movie_list_paginated_schema_invalid_pages():
+
+def test_movie_list_paginated_schema_zero_pages_allowed():
     """
-   MovieListPaginatedSchema: pagination should be invalid
+    MovieListResponseSchema: total_pages=0 and total_items>=0 should be valid
     """
-    with pytest.raises(ValidationError) as excinfo:
-        MovieListPaginatedSchema(
-            movies=[], prev_page=None, next_page=None,
-            total_pages=0, total_items=1
-        )
-    error_msg = str(excinfo.value)
-    assert (
-        "greater than or equal to 1" in error_msg or "1" in error_msg
-    ), (
-        f"Expected validation error about 'total_pages' being less than 1, but got: {error_msg}"
+    schema = MovieListResponseSchema(
+        movies=[], prev_page=None, next_page=None,
+        total_pages=0, total_items=1
     )
 
-    with pytest.raises(ValidationError) as excinfo:
-        MovieListPaginatedSchema(
-            movies=[], prev_page=None, next_page=None,
-            total_pages=1, total_items=-5
-        )
-    error_msg = str(excinfo.value)
-    assert (
-        "greater than or equal to 0" in error_msg or "0" in error_msg
-    ), (
-        f"Expected validation error about 'total_items' being negative, but got: {error_msg}"
-    )
+    assert schema.total_pages == 0
+    assert schema.total_items == 1
+    assert schema.movies == []
+    assert schema.prev_page is None
+    assert schema.next_page is None
