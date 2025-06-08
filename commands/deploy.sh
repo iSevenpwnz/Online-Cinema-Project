@@ -12,13 +12,17 @@ handle_error() {
 # Navigate to the application directory
 cd /home/ubuntu/src/online-cinema-project || handle_error "Failed to navigate to the application directory."
 
+# Get current branch name
+CURRENT_BRANCH=$(git branch --show-current)
+echo "Current branch: $CURRENT_BRANCH"
+
 # Fetch the latest changes from the remote repository
 echo "Fetching the latest changes from the remote repository..."
-git fetch origin main || handle_error "Failed to fetch updates from the 'origin' remote."
+git fetch origin $CURRENT_BRANCH || handle_error "Failed to fetch updates from the 'origin' remote."
 
-# Reset the local repository to match the remote 'main' branch
-echo "Resetting the local repository to match 'origin/main'..."
-git reset --hard origin/main || handle_error "Failed to reset the local repository to 'origin/main'."
+# Reset the local repository to match the remote branch
+echo "Resetting the local repository to match 'origin/$CURRENT_BRANCH'..."
+git reset --hard origin/$CURRENT_BRANCH || handle_error "Failed to reset the local repository to 'origin/$CURRENT_BRANCH'."
 
 # (Optional) Pull any new tags from the remote repository
 echo "Fetching tags from the remote repository..."

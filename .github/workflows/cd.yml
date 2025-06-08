@@ -1,0 +1,54 @@
+name: Deploy to AWS EC2
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - develop
+      - main
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'develop')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Add EC2 Host to known_hosts
+        run: |
+          ssh-keyscan -p 1313 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Execute Deployment Script on EC2
+        run: |
+          ssh -p 1313 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                'bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh'
+
+      - name: Notify Discord про статус деплою (success)
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@0.3.2
+        with:
+          args: |
+            🚀 Deployment SUCCESS для ${{ github.repository }} на гілці ${{ github.event.workflow_run.head_branch }}.
+            Автор: ${{ github.event.workflow_run.actor.login }}
+            Commit: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Notify Discord про статус деплою (failure)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@0.3.2
+        with:
+          args: |
+            ❌ Deployment FAILED для ${{ github.repository }} на гілці ${{ github.event.workflow_run.head_branch }}.
+            Автор: ${{ github.event.workflow_run.actor.login }}
+            Commit: ${{ github.event.workflow_run.head_sha }}
