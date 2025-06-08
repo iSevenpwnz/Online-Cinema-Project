@@ -47,13 +47,15 @@ jobs:
       - name: Deploy to server
         env:
           BRANCH: ${{ github.head_ref || github.ref_name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
         run: |
           echo "Deploying branch: $BRANCH"
+          echo "Repository URL: $REPO_URL"
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
             
             PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
-            REPO_URL="https://github.com/iSevenpwnz/Online-Cinema-Project.git"
+            REPO_URL="$REPO_URL"
             BRANCH="$BRANCH"
             
             echo "Deploying branch: $BRANCH"
