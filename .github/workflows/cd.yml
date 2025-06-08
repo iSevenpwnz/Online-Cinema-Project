@@ -2,9 +2,9 @@ name: Deploy to AWS EC2
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, cd-testing]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, cd-testing]
   workflow_run:
     workflows: ["CI"]
     types:
@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - develop
+      - cd-testing
 
 jobs:
   deploy:
