@@ -13,6 +13,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debug - Show trigger info
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Is merged: ${{ github.event.pull_request.merged }}"
+
       - name: Checkout Repository
         uses: actions/checkout@v3
 
