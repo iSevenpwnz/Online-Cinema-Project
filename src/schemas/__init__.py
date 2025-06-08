@@ -1,5 +1,6 @@
 from schemas.movies import (
     MovieDetailSchema,
+    MovieListResponseSchema,
     MovieCreateSchema,
     MovieUpdateSchema,
     MovieListItemSchema
@@ -24,4 +25,9 @@ from schemas.extra_functionality_movie import (
     LikeDislikeSchema,
     FavoriteSchema,
     MovieRatingSchema
+)
+
+from schemas.orders import (
+    OrderItemResponse,
+    OrderResponse
 )

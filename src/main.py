@@ -6,7 +6,9 @@ from routes import (
     movie_router,
     accounts_router,
     profiles_router,
+    shopping_cart_router,
     payments_router,
+    orders_router,
     shopping_cart_router,
     extra_functionality_movie_router,
     comments_router
@@ -105,6 +107,7 @@ app.include_router(
     shopping_cart_router, prefix=f"{api_version_prefix}/cart", tags=["cart"]
 )
 app.include_router(payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"])
+app.include_router(orders_router, prefix=f"{api_version_prefix}/orders", tags=["orders"])
 app.include_router(
     extra_functionality_movie_router,
     prefix=f"{api_version_prefix}/extra_functionality",
