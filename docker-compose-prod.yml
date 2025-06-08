@@ -190,6 +190,8 @@ volumes:
     driver: local
   minio_data:
     driver: local
+  redis_data_library_service:
+    driver: local
 
 networks:
   theater_network:
