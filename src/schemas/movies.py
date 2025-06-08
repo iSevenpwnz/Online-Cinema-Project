@@ -34,6 +34,10 @@ class GenreSchema(BaseModel):
     }
 
 
+class GenreCreateSchema(BaseModel):
+    name: str
+
+
 class GenreWithCountSchema(GenreSchema):
     movie_count: int
 
@@ -76,6 +80,10 @@ class StarDetailSchema(StarSchema):
     }
 
 
+class StarCreateSchema(BaseModel):
+    name: str
+
+
 class DirectorSchema(BaseModel):
     id: int
     name: str
@@ -105,6 +113,10 @@ class DirectorDetailSchema(DirectorSchema):
     }
 
 
+class DirectorCreateSchema(BaseModel):
+    name: str
+
+
 class CertificationSchema(BaseModel):
     id: int
     name: str
@@ -125,7 +137,7 @@ class MovieBaseSchema(BaseModel):
 
     uuid: str = Field(..., max_length=100)
     name: str = Field(..., max_length=250)
-    year: int = Field(..., max_length=4)
+    year: int = Field(...)
     time: int = Field(..., ge=15, le=150)
     imdb: float = Field(..., ge=0, le=10, multiple_of=0.1)
     votes: int = Field(..., ge=0)
@@ -134,9 +146,9 @@ class MovieBaseSchema(BaseModel):
     description: str = Field(..., min_length=10, max_length=2000)
     price: Decimal = Field(..., ge=0, max_digits=10, decimal_places=2)
     certification_id: int = Field(..., gt=0)
-    genres: List[GenreSchema] = Field(..., min_length=1)
-    stars: List[StarSchema] = Field(..., min_length=1)
-    directors: List[DirectorSchema] = Field(..., min_length=1)
+    genres: List[str] = Field(..., min_length=1)
+    stars: List[str] = Field(..., min_length=1)
+    directors: List[str] = Field(..., min_length=1)
 
     model_config = {
         "from_attributes": True,
@@ -146,7 +158,6 @@ class MovieBaseSchema(BaseModel):
 
 
 class MovieDetailSchema(MovieBaseSchema):
-
     id: int
 
     model_config = {
@@ -165,7 +176,7 @@ class MovieListSchema(BaseModel):
     year: int
     imdb: float = Field(..., ge=0, le=10)
     price: Decimal
-    genres: List[GenreSchema]
+    genres: List[str]
 
     model_config = {
         "from_attributes": True,
@@ -180,8 +191,8 @@ class MovieListSchema(BaseModel):
 class MovieListPaginatedSchema(BaseModel):
     movies: List[MovieListSchema]
 
-    prev_page: Optional[HttpUrl] = None
-    next_page: Optional[HttpUrl] = None
+    prev_page: Optional[str] = None
+    next_page: Optional[str] = None
 
     total_pages: int = Field(..., ge=1)
     total_items: int = Field(..., ge=0)
@@ -197,11 +208,6 @@ class MovieCreateSchema(MovieBaseSchema):
         }
     }
 
-    @field_validator("genres", mode="before")
-    @classmethod
-    def normalize_list_fields(cls, value: List[str]) -> List[str]:
-        return [item.title() for item in value]
-
 
 class MovieUpdateSchema(BaseModel):
 
@@ -210,15 +216,15 @@ class MovieUpdateSchema(BaseModel):
     year: Optional[int] = Field(None, le=datetime.now().year)
     time: Optional[int] = Field(None, ge=1, le=150)
     imdb: Optional[float] = Field(None, ge=0, le=10)
-    votes: Optional[int] = None
-    meta_score: Optional[float] = None
-    gross: Optional[float] = None
+    votes: Optional[int] = Field(None)
+    meta_score: Optional[float] = Field(None)
+    gross: Optional[float] = Field(None)
     description: Optional[str] = None
     price: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
     certification_id: Optional[int] = None
-    genres: Optional[Union[List[int], List[str]]] = None
-    stars: Optional[Union[List[int], List[str]]] = None
-    directors: Optional[Union[List[int], List[str]]] = None
+    genres: Optional[List[str]] = None
+    stars: Optional[List[str]] = None
+    directors: Optional[List[str]] = None
 
     model_config = {
         "json_schema_extra": {

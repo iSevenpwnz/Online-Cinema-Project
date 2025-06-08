@@ -41,16 +41,7 @@ movie_schema_example: Dict[str, JsonValue] = {
     "year": 1999,
     "imdb": 8.8,
     "price": "12.99",
-    "genres": [
-        {
-            "id": 1,
-            "name": "Sci-Fi"
-        },
-        {
-            "id": 2,
-            "name": "Action"
-        }
-    ]
+    "genres": ["Sci-Fi", "Action"]
 }
 
 movie_detail_schema_example: Dict[str, JsonValue] = {
@@ -65,25 +56,14 @@ movie_detail_schema_example: Dict[str, JsonValue] = {
         "name": "PG-13"
     },
     "genres": [
-        {
-            "id": 1,
-            "name": "Sci-Fi"
-        },
-        {
-            "id": 2,
-            "name": "Action"
-        }
+        "Sci-Fi",
+        "Action"
     ],
     "stars": [
-        {
-            "id": 1,
-            "name": "Leonardo DiCaprio"
-        }
+        "Leonardo DiCaprio"
     ],
     "directors": [
-        {
-            "id": 1, "name": "Christopher Nolan"
-        }
+        "Christopher Nolan"
     ]
 }
 
