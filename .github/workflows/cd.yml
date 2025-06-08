@@ -59,6 +59,9 @@ jobs:
             
             echo "Deploying branch: $BRANCH"
             
+            # Create project directory if it doesn't exist
+            mkdir -p "$(dirname "$PROJECT_DIR")"
+            
             # Clone repo if it doesn't exist or is empty
             if [ ! -d "$PROJECT_DIR/.git" ]; then
               echo "Cloning repository..."
