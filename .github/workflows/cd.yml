@@ -38,4 +38,4 @@ jobs:
           BRANCH="${{ github.head_ref || github.ref_name }}"
           echo "Deploying branch: $BRANCH"
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-                "DEPLOY_BRANCH=$BRANCH bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh"
+                "cd /home/ubuntu/src/online-cinema-project && DEPLOY_BRANCH=$BRANCH bash commands/deploy.sh"
