@@ -21,7 +21,7 @@ from sqlalchemy.orm import (
     validates
 )
 
-from database import Base
+from database.models.base import Base
 from database.validators import accounts as validators
 from security.passwords import hash_password, verify_password
 from security.utils import generate_secure_token
@@ -87,6 +87,17 @@ class UserModel(Base):
 
     profile: Mapped[Optional["UserProfileModel"]] = relationship(
         "UserProfileModel",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    favorite_movies = relationship(
+        "FavoriteMovie",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    movie_ratings = relationship(
+        "MovieRating",
         back_populates="user",
         cascade="all, delete-orphan"
     )
