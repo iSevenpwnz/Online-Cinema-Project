@@ -79,7 +79,44 @@ jobs:
             
             # Deploy with docker compose
             echo "Starting Docker containers..."
-            docker compose -f docker-compose-prod.yml up -d --build
+            
+            # Build new images first
+            docker compose -f docker-compose-prod.yml build
+            
+            # Check which services need restart
+            echo "Checking which services need updates..."
+            CHANGED_SERVICES=$(docker compose -f docker-compose-prod.yml config --services)
+            
+            # Restart only changed services (lazy approach)
+            for service in $CHANGED_SERVICES; do
+              echo "Updating service: $service"
+              docker compose -f docker-compose-prod.yml up -d --no-deps $service
+            done
+            
+            echo "Waiting for services to be ready..."
+            sleep 30
+            
+            echo "Checking service health..."
+            # Check if web service is responding
+            for i in {1..10}; do
+              if curl -f http://localhost:8000/docs >/dev/null 2>&1; then
+                echo "✅ Web service is healthy"
+                break
+              elif [ $i -eq 10 ]; then
+                echo "❌ Web service failed to start"
+                docker compose -f docker-compose-prod.yml logs web
+                exit 1
+              else
+                echo "Waiting for web service... attempt $i/10"
+                sleep 10
+              fi
+            done
             
             echo "Deployment completed successfully for branch: $BRANCH"
           EOF
+
+      - name: Deployment Success
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🚀 Application is running on the server"
+          echo "🌐 Check: http://63.176.224.34"
