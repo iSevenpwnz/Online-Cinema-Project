@@ -1,6 +1,7 @@
 from fastapi import Depends, Request, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from config.dependencies import get_jwt_auth_manager
 from database.models.accounts import UserModel
@@ -63,7 +64,9 @@ async def get_current_user(
 ) -> UserModel:
 
     current_user = await db.scalar(
-        select(UserModel).where(UserModel.id == token_user_id)
+        select(UserModel)
+        .where(UserModel.id == token_user_id)
+        .options(joinedload(UserModel.group))
     )
 
     if current_user is None:
