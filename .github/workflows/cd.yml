@@ -41,8 +41,7 @@ jobs:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: Add EC2 Host to known_hosts
-        run: |
-          run: ssh-keyscan -H ec2-63-176-224-34.eu-central-1.compute.amazonaws.com >> ~/.ssh/known_hosts || true
+        run: ssh-keyscan -H ec2-63-176-224-34.eu-central-1.compute.amazonaws.com >> ~/.ssh/known_hosts || true
 
       - name: Deploy to server
         run: |
@@ -114,4 +113,5 @@ jobs:
             docker logs nginx --tail 20
             
             echo "Deployment completed successfully for branch: $BRANCH"
+          exit
           EOF
