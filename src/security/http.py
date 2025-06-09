@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from config.dependencies import get_jwt_auth_manager
-from database.models.accounts import UserModel
+from database.models.accounts import UserModel, UserGroupEnum
 from exceptions.security import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
 from database import get_db
@@ -88,3 +88,12 @@ async def get_current_user_if_active(
         )
 
     return current_user
+
+
+async def require_admin(user: UserModel = Depends(get_current_user)) -> UserModel:
+    if not user.has_group(UserGroupEnum.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="For Admin only."
+        )
+    return user

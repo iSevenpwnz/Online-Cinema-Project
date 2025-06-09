@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 
+
 from routes import (
     movie_router,
     accounts_router,
@@ -10,6 +11,7 @@ from routes import (
     orders_router,
     shopping_cart_router,
     extra_functionality_movie_router,
+    comments_router
 )
 
 app = FastAPI(
@@ -110,4 +112,9 @@ app.include_router(
     extra_functionality_movie_router,
     prefix=f"{api_version_prefix}/extra_functionality",
     tags=["extra_functionality"],
+)
+app.include_router(
+    comments_router,
+    prefix=f"{api_version_prefix}/comments",
+    tags=["comments"]
 )

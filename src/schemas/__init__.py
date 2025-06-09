@@ -1,9 +1,9 @@
 from schemas.movies import (
     MovieDetailSchema,
     MovieListResponseSchema,
-    MovieListItemSchema,
     MovieCreateSchema,
-    MovieUpdateSchema
+    MovieUpdateSchema,
+    MovieListItemSchema
 )
 from schemas.accounts import (
     UserRegistrationRequestSchema,

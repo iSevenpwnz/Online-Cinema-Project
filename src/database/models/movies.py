@@ -1,3 +1,4 @@
+
 from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -11,7 +12,7 @@ from sqlalchemy import (
     Float,
     Text,
     DECIMAL,
-    UniqueConstraint,
+    UniqueConstraint, Index,
 )
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
