@@ -483,3 +483,35 @@ async def test_check_movie_in_carts_with_multiple_carts(
     assert response.status_code == 200
     data = response.json()
     assert data["is_in_cart"] is True
+
+
+@pytest.mark.asyncio
+async def test_add_movie_to_cart_unverified_user(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+    movie: MovieModel
+):
+    """Test adding movie to cart with inactive user."""
+    # Create inactive user
+    user = UserModel.create(
+        email="inactive@example.com",
+        raw_password="TestPass123!",
+        group_id=1
+    )
+    user.is_active = False  # Explicitly set as inactive
+    db_session.add(user)
+    await db_session.commit()
+
+    # Try to login with inactive user
+    response = await client.post(
+        "/api/v1/accounts/login/",
+        json={
+            "email": user.email,
+            "password": "TestPass123!"
+        }
+    )
+    assert response.status_code == 403
+    data = response.json()
+    assert data["detail"] == "User account is not activated."

@@ -37,6 +37,11 @@ class ShoppingCartService:
     async def add_movie_to_cart(self, user: UserModel, movie_id: int) -> None:
         """Add movie to user's cart."""
         try:
+            if not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Please activate your account before adding items to cart."
+                )
             cart = await self.get_or_create_cart(user)
             await validate_cart_ownership(self.session, cart.id, user.id)
             await validate_movie_exists(self.session, movie_id)
