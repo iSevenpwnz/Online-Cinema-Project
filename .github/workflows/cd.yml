@@ -3,13 +3,11 @@ name: Deploy to AWS EC2
 on:
   push:
     branches:
-      - main
       - develop
       - cd-setting
   pull_request:
     types: [closed]
     branches:
-      - main
       - develop
       - cd-setting
 
@@ -34,13 +32,23 @@ jobs:
       - name: Determine target branch
         id: branch
         run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref name: ${{ github.ref_name }}"
+          echo "Ref: ${{ github.ref }}"
+
           if [ "${{ github.event_name }}" = "push" ]; then
-            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            BRANCH="${{ github.ref_name }}"
+            echo "Push detected, using branch: $BRANCH"
           else
-            echo "branch=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
+            BRANCH="${{ github.event.pull_request.base.ref }}"
+            echo "PR merge detected, using base branch: $BRANCH"
           fi
+
+          echo "Final branch: $BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Execute Deployment Script on EC2
         run: |
+          echo "Deploying branch: ${{ steps.branch.outputs.branch }}"
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
                 'bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh ${{ steps.branch.outputs.branch }}'
