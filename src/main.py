@@ -9,6 +9,7 @@ from routes import (
     payments_router,
     shopping_cart_router,
     extra_functionality_movie_router,
+    comments_router
 )
 
 app = FastAPI(
@@ -108,4 +109,9 @@ app.include_router(
     extra_functionality_movie_router,
     prefix=f"{api_version_prefix}/extra_functionality",
     tags=["extra_functionality"],
+)
+app.include_router(
+    comments_router,
+    prefix=f"{api_version_prefix}/comments",
+    tags=["comments"]
 )

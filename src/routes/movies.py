@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from database import get_db, MovieModel, movie_genres
+from database import get_db, MovieModel, movie_genres, UserModel
 from database import CertificationModel, GenreModel, StarModel, DirectorModel
 from database.models.orders import Order, OrderItem, OrderStatusEnum
 
@@ -25,7 +25,7 @@ from schemas.movies import (
     StarSchema,
     StarDetailSchema,
 )
-
+from security.http import get_current_user, require_admin
 
 router = APIRouter()
 
@@ -88,8 +88,11 @@ async def get_movie_list(
 ) -> MovieListResponseSchema:
     """
     Fetch a paginated list of movies from the database (asynchronously).
+    Movies can be:
+        - filtered by year or imdb rating.
+        - sorted by price, year, imdb rating (default == id)
+        - searched by name, description, star or director.
     """
-
     stmt = select(MovieModel).options(
         joinedload(MovieModel.genres),
     )
@@ -200,6 +203,9 @@ async def get_movie_by_id(
     movie_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> MovieDetailSchema:
+    """
+    Get a movie detail by its ID.
+    """
     stmt = (
         select(MovieModel)
         .options(
@@ -268,13 +274,8 @@ async def get_genres_with_counts(
         search: Optional[str] = Query(None, description="Search genre by name")
 ):
     """
-    Retrieve all genres with the count of movies in each genre.
-
-    Returns:
-        List of genres with additional 'movie_count' field showing
-        how many movies belong to each genre
+    Get a list of all genres with the count of movies in each genre.
     """
-
     stmt = select(
         GenreModel.id,
         GenreModel.name,
@@ -345,7 +346,6 @@ async def get_movies_by_genre(
 ):
     """
     Get paginated list of movies belonging to a specific genre.
-
     Returns 404 if genre doesn't exist or has no movies.
     """
     genre = await db.get(GenreModel, genre_id)
@@ -448,8 +448,11 @@ async def get_movies_by_genre(
 )
 async def create_movie(
         movie_data: MovieCreateSchema,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ) -> MovieDetailSchema:
+    """
+    Create a new movie. For admin only.
+    """
     existing_movie = await db.execute(
         select(MovieModel).where(
             MovieModel.name == movie_data.name,
@@ -593,29 +596,12 @@ async def create_movie(
 async def update_movie(
         movie_id: int = Path(..., description="ID of the movie to update", gt=0),
         movie_data: MovieUpdateSchema = Body(...),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ) -> MovieDetailSchema:
     """
-    Update movie details by ID with automatic handling of related entities.
-
-    Supports partial updates - only provided fields will be changed.
-    Creates or links:
-    - New genres if provided
-    - New stars if provided
-    - New directors if provided
-
-    Args:
-        movie_id: ID of the movie to update
-        movie_data: Movie data including fields to update
-        db: Async database session
-
-    Returns:
-        MovieDetailSchema: Updated movie with full details
-
-    Raises:
-        HTTPException: 400 for invalid data, 404 if movie not found
+    Update(full and partial) movie details by ID with automatic handling of related entities.
+    For admin only.
     """
-
     stmt = (
         select(MovieModel)
         .options(
@@ -751,19 +737,7 @@ async def delete_movie(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Delete a specific movie by its ID if it has no paid orders.
-
-    Args:
-        movie_id (int): The unique identifier of the movie to delete.
-        db (AsyncSession): The SQLAlchemy database session.
-
-    Raises:
-        HTTPException:
-            404 - If movie not found
-            400 - If movie appears in paid orders
-
-    Returns:
-        dict: Confirmation message if successful.
+    Delete a specific movie by its ID if it has no paid orders. For admin only.
     """
     movie = await db.get(MovieModel, movie_id)
 
@@ -794,15 +768,18 @@ async def delete_movie(
     return {"detail": "Movie deleted successfully."}
 
 
-@router.post("/genres/", tags=["Genres"], response_model=GenreSchema)
+@router.post(
+    "/genres/",
+    tags=["Genres"],
+    response_model=GenreSchema
+)
 async def create_genre(
         genre_name: str,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ):
     """
-    Create a new genre.
+    Create a new genre. For admin only.
     """
-
     existing_genre = await db.execute(
         select(GenreModel).where(GenreModel.name == genre_name)
     )
@@ -820,14 +797,18 @@ async def create_genre(
     return new_genre
 
 
-@router.put("/genres/{genre_id}", tags=["Genres"], response_model=GenreSchema)
+@router.put(
+    "/genres/{genre_id}",
+    tags=["Genres"],
+    response_model=GenreSchema
+)
 async def update_genre(
         genre_id: int,
         new_name: str,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ):
     """
-    Update genre name.
+    Update genre name. For admin only.
     """
     genre = await db.get(GenreModel, genre_id)
     if not genre:
@@ -854,13 +835,16 @@ async def update_genre(
     return genre
 
 
-@router.delete("/genres/{genre_id}", tags=["Genres"],)
+@router.delete(
+    "/genres/{genre_id}",
+    tags=["Genres"],
+)
 async def delete_genre(
         genre_id: int,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ):
     """
-    Delete a genre by ID.
+    Delete a genre by ID. For admin only.
     """
     genre = await db.get(GenreModel, genre_id)
     if not genre:
@@ -873,13 +857,17 @@ async def delete_genre(
     await db.commit()
 
 
-@router.post("/stars/", tags=["Stars"], response_model=StarSchema)
+@router.post(
+    "/stars/",
+    tags=["Stars"],
+    response_model=StarSchema
+)
 async def create_star(
         star_name: str,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ):
     """
-    Create a new star.
+    Create a new star. For admin only.
     """
     existing_star = await db.execute(
         select(StarModel).where(StarModel.name == star_name)
@@ -898,16 +886,19 @@ async def create_star(
     return new_star
 
 
-@router.get("/stars/", tags=["Stars"], response_model=List[StarSchema])
+@router.get(
+    "/stars/",
+    tags=["Stars"],
+    response_model=List[StarSchema]
+)
 async def get_stars_list(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+        skip: int = 0,
+        limit: int = 100,
+        db: AsyncSession = Depends(get_db),
 ):
     """
     View list of stars.
     """
-
     result = await db.execute(
         select(StarModel)
         .offset(skip)
@@ -916,15 +907,18 @@ async def get_stars_list(
     return result.scalars().all()
 
 
-@router.get("/stars/{star_id}", tags=["Stars"], response_model=StarDetailSchema)
+@router.get(
+    "/stars/{star_id}",
+    tags=["Stars"],
+    response_model=StarDetailSchema
+)
 async def get_star_detail(
         star_id: int,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ):
     """
     Get specific star by ID with movie list.
     """
-
     stmt = select(StarModel).options(joinedload(StarModel.movies)).where(StarModel.id == star_id)
     result = await db.execute(stmt)
     star = result.scalars().first()
@@ -942,16 +936,19 @@ async def get_star_detail(
     }
 
 
-@router.put("/stars/{star_id}", tags=["Stars"], response_model=StarSchema)
+@router.put(
+    "/stars/{star_id}",
+    tags=["Stars"],
+    response_model=StarSchema
+)
 async def update_star(
         star_id: int,
         new_name: str,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ):
     """
-    Update star name.
+    Update star name. For admin only.
     """
-
     star = await db.get(StarModel, star_id)
     if not star:
         raise HTTPException(
@@ -977,15 +974,18 @@ async def update_star(
     return star
 
 
-@router.delete("/stars/{star_id}", tags=["Stars"], status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/stars/{star_id}",
+    tags=["Stars"],
+    status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_star(
         star_id: int,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
 ):
     """
-    Delete a star by ID.
+    Delete a star by ID. For admin only.
     """
-
     star = await db.get(StarModel, star_id)
     if not star:
         raise HTTPException(

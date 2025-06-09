@@ -6,7 +6,10 @@ from decimal import Decimal
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, func, insert, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+
+from database import UserGroupModel, UserGroupEnum, UserModel
 from database.models.orders import Order, OrderItem, OrderStatusEnum
 from database.models.movies import (
     MovieModel,
@@ -1012,14 +1015,13 @@ class TestMovieValidation:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_patch_movie_forbidden_field(self, client, db_session, seed_database):
+    async def test_patch_movie_forbidden_field(self, client, seed_database, db_session):
         """
         Test updating forbidden movie field.
-        Should return 422 Unprocessable Entity when trying to update non-updatable field.
         """
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         response = await client.patch(
             f"/api/v1/theater/movies/{movie.id}/",
-            json={"forbidden": 123}
+            json={"forbidden": 123},
         )
         assert response.status_code == 422

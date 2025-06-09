@@ -78,7 +78,7 @@ movie_create_schema_example: Dict[str, JsonValue] = {
     "gross": 836.8,
     "description": "A mind-bending thriller by Christopher Nolan.",
     "price": "12.99",
-    "certification_id": "2",
+    "certification_id": 2,
     "genres": ["Sci-Fi", "Action"],
     "stars": ["Leonardo DiCaprio", "Joseph Gordon-Levitt", "Ellen Page"],
     "directors": ["Christopher Nolan", "Quentin Tarantino"]
@@ -89,5 +89,5 @@ movie_update_schema_example: Dict[str, JsonValue] = {
     "year": 2012,
     "imdb": 8.8,
     "price": "12.99",
-    "certification_id": "2",
+    "certification_id": 2,
 }
