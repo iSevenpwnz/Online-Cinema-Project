@@ -41,6 +41,7 @@ validators = "^0.34.0"
 celery = "^5.5.3"
 redis = "^6.2.0"
 stripe = "^12.2.0"
+fastapi-pagination = "^0.13.2"
 [tool.poetry.group.dev.dependencies]
 types-passlib = "*"
 types-python-jose = "*"
