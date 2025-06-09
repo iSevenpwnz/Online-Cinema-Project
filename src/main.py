@@ -1,14 +1,12 @@
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-# adding comment to push
 
 
 from routes import (
     movie_router,
     accounts_router,
     profiles_router,
-    shopping_cart_router,
     payments_router,
     orders_router,
     shopping_cart_router,

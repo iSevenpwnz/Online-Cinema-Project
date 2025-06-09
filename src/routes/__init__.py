@@ -6,4 +6,3 @@ from routes.payments import router as payments_router
 from routes.orders import router as orders_router
 from routes.extra_functionality_movie import router as extra_functionality_movie_router
 from routes.comments import router as comments_router
-# adding comment to push

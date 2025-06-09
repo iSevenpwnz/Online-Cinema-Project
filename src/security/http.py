@@ -8,8 +8,6 @@ from database.models.accounts import UserModel, UserGroupEnum
 from exceptions.security import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
 from database import get_db
-# adding comment to push
-
 
 
 def get_token(request: Request) -> str:
