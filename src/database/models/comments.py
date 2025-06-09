@@ -5,6 +5,7 @@ from sqlalchemy import ForeignKey, String, Boolean, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
+# adding comment to push
 
 
 class Comment(Base):

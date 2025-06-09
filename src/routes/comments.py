@@ -7,6 +7,8 @@ from database.models.comments import Comment, CommentLike, Notification
 from database.models.accounts import UserModel
 from schemas.comments import CommentCreate, CommentOut, NotificationOut
 from security.http import get_current_user
+# adding comment to push
+
 
 router = APIRouter()
 

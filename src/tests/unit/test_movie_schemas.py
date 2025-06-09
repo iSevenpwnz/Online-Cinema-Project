@@ -4,11 +4,16 @@ from pydantic import ValidationError
 from datetime import datetime
 
 from schemas.movies import (
-    GenreSchema, GenreWithCountSchema, StarSchema, StarDetailSchema,
-    DirectorSchema, DirectorDetailSchema, CertificationSchema,
-    MovieBaseSchema, MovieDetailSchema, MovieListItemSchema ,
-    MovieListResponseSchema, MovieCreateSchema, MovieUpdateSchema
+    GenreSchema,
+    StarSchema,
+    DirectorSchema,
+    MovieBaseSchema,
+    MovieListItemSchema ,
+    MovieListResponseSchema,
+    MovieUpdateSchema
 )
+# adding comment to push
+
 
 
 def test_genre_schema_valid():

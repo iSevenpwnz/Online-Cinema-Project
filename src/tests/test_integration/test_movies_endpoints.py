@@ -4,13 +4,8 @@ import datetime
 from decimal import Decimal
 
 import pytest
-from httpx import AsyncClient
 from sqlalchemy import select, func, insert, delete
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
-from database import UserGroupModel, UserGroupEnum, UserModel
-from database.models.orders import Order, OrderItem, OrderStatusEnum
 from database.models.movies import (
     MovieModel,
     GenreModel,
@@ -20,6 +15,8 @@ from database.models.movies import (
 
 )
 from database.models.orders import OrderStatusEnum, Order, OrderItem
+# adding comment to push
+
 
 
 class TestGenreEndpoints:

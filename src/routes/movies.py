@@ -9,6 +9,8 @@ from sqlalchemy.orm import joinedload, selectinload
 from database import get_db, MovieModel, movie_genres, UserModel
 from database import CertificationModel, GenreModel, StarModel, DirectorModel
 from database.models.orders import Order, OrderItem, OrderStatusEnum
+# adding comment to push
+
 
 from schemas.examples.movies import (
     movie_schema_example,
@@ -25,7 +27,6 @@ from schemas.movies import (
     StarSchema,
     StarDetailSchema,
 )
-from security.http import get_current_user, require_admin
 
 router = APIRouter()
 
