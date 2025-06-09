@@ -313,16 +313,20 @@ async def test_admin_can_see_all_payments(
     db_session: AsyncSession,
 ):
     # Create admin user
+
+    admin_group = await db_session.scalar(
+        select(UserGroupModel).where(
+            UserGroupModel.name == UserGroupEnum.ADMIN
+        )
+    )
+
+    if admin_group is None:
+        raise ValueError("Admin group not found in the database.")
+
     admin_user = UserModel.create(
         email="admin@email.com",
         raw_password="AdminP@ssword1",
-        group_id=(
-            await db_session.scalar(
-                select(UserGroupModel).where(
-                    UserGroupModel.name == UserGroupEnum.ADMIN
-                )
-            )
-        ).id,
+        group_id=admin_group.id,
     )
     admin_user.is_active = True
     db_session.add(admin_user)
@@ -391,7 +395,9 @@ async def test_payments_filter_by_from_date_and_to_date(
         "/api/v1/payments/?from_date=2025-06-11&page=1&per_page=50",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code == 200, f"Bad response status code: {resp.status_code}. Message: {resp.json()}"
+    assert (
+        resp.status_code == 200
+    ), f"Bad response status code: {resp.status_code}. Message: {resp.json()}"
     data = resp.json()
     for p in data["results"]:
         assert p["created_at"][:10] >= "2025-06-11"

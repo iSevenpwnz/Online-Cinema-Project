@@ -1,12 +1,10 @@
 from __future__ import annotations
 from typing import TypeVar, Generic, Any, Sequence, Optional
 
-from fastapi_pagination import Params
-from fastapi_pagination.bases import AbstractPage, AbstractParams
 from typing import Annotated
 
 from fastapi import Query
-from fastapi_pagination.bases import AbstractParams, RawParams
+from fastapi_pagination.bases import AbstractPage, AbstractParams, RawParams
 from pydantic import BaseModel
 
 T = TypeVar("T")
@@ -33,7 +31,7 @@ class CustomPage(AbstractPage[T], Generic[T]):
     __params_type__ = CustomParams
 
     @classmethod
-    def create(
+    def create(  # type: ignore
         cls,
         items: Sequence[T],
         params: CustomParams,
