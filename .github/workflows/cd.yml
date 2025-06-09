@@ -1,12 +1,12 @@
-# Test deployment workflow for cd-settings branchMore actionsMore actions
+# Test deployment workflow for cd-settings branchMore actions
 name: Deploy to AWS EC2
 
 on:
   push:
-    branches: [ main, develop, cd-setting ]
+    branches: [main, develop, cd-setting]
 
   workflow_run:
-    workflows: [ "CI" ]
+    workflows: ["CI"]
     types:
       - completed
     branches:
@@ -40,14 +40,6 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Debug secret EC2_HOST
-        run: |
-          echo "::debug::EC2_HOST is '${{ secrets.EC2_HOST }}'"
-          if [[ "${{ secrets.EC2_HOST }}" == "***" ]]; then
-            echo "❌ ERROR: EC2_HOST is still set to ***"
-            exit 1
-          fi
-
       - name: Add EC2 Host to known_hosts
         run: |
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
@@ -59,20 +51,20 @@ jobs:
           PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
           echo "Deploying branch: $BRANCH"
           echo "Repository URL: $REPO_URL"
-          ssh -o StrictHostKeyChecking=no -tt ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
-          
+            
             PROJECT_DIR="$PROJECT_DIR"
             REPO_URL="$REPO_URL"
             BRANCH="$BRANCH"
-          
+            
             echo "Deploying branch: \$BRANCH"
             echo "Project directory: \$PROJECT_DIR"
             echo "Repository URL: \$REPO_URL"
-          
+            
             # Create project directory if it doesn't exist
             mkdir -p "$(dirname "$PROJECT_DIR")"
-          
+            
             # Clone repo if it doesn't exist or is empty
             if [ ! -d "$PROJECT_DIR/.git" ]; then
               echo "Cloning repository..."
@@ -88,37 +80,37 @@ jobs:
               git clean -fd
               git reset --hard HEAD
             fi
-          
+            
             # Checkout and reset to target branch (force)
             echo "Checking out branch: $BRANCH"
             git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
             git reset --hard "origin/$BRANCH"
-          
+            
             # Deploy with docker compose
             echo "Starting Docker containers..."
             docker compose -f docker-compose-prod.yml up -d --build
-          
+            
             # Force rebuild nginx to reload config
             echo "Rebuilding nginx with new config..."
             docker compose -f docker-compose-prod.yml stop nginx
             docker compose -f docker-compose-prod.yml rm -f nginx
             docker compose -f docker-compose-prod.yml up -d --build nginx
-          
+            
             # Wait for containers to be ready
             echo "Waiting for containers to start..."
             sleep 30
-          
+            
             # Check container status
             echo "Container status:"
             docker compose -f docker-compose-prod.yml ps
-          
+            
             # Check if web container is healthy
             echo "Checking web container logs:"
             docker logs backend_theater --tail 20
-          
+            
             # Check nginx container logs
             echo "Checking nginx container logs:"
             docker logs nginx --tail 20
-          
+            
             echo "Deployment completed successfully for branch: $BRANCH"
           EOF
