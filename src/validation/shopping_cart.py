@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from database.models.shopping_cart import CartItem
+from database.models.shopping_cart import CartItem, Cart
 from database.models.movies import MovieModel
+from fastapi import HTTPException
 
 
 async def validate_movie_exists(session: AsyncSession, movie_id: int) -> None:
@@ -32,4 +33,18 @@ async def validate_movie_not_purchased(
     once we have the purchased movies model.
     """
     # TODO: Implement check against purchased movies
+    # This validation should be implemented in the purchased movies module
     pass
+
+
+async def validate_cart_ownership(
+    session: AsyncSession, cart_id: int, user_id: int
+) -> None:
+    """Validate that cart belongs to the user"""
+    stmt = select(Cart).where(Cart.id == cart_id, Cart.user_id == user_id)
+    result = await session.execute(stmt)
+    if not result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to modify this cart"
+        )

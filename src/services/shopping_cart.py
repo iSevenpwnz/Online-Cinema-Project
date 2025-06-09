@@ -11,6 +11,7 @@ from validation.shopping_cart import (
     validate_movie_exists,
     validate_movie_not_in_cart,
     validate_movie_not_purchased,
+    validate_cart_ownership,
 )
 
 
@@ -36,6 +37,7 @@ class ShoppingCartService:
         """Add movie to user's cart."""
         try:
             cart = await self.get_or_create_cart(user)
+            await validate_cart_ownership(self.session, cart.id, user.id)
             await validate_movie_exists(self.session, movie_id)
             await validate_movie_not_in_cart(self.session, cart.id, movie_id)
             await validate_movie_not_purchased(self.session, user.id, movie_id)
@@ -50,6 +52,8 @@ class ShoppingCartService:
     async def remove_movie_from_cart(self, user: UserModel, movie_id: int) -> None:
         """Remove movie from user's cart."""
         cart = await self.get_or_create_cart(user)
+        await validate_cart_ownership(self.session, cart.id, user.id)
+
         query = select(CartItem).where(
             CartItem.cart_id == cart.id, CartItem.movie_id == movie_id
         )
@@ -63,6 +67,8 @@ class ShoppingCartService:
     async def clear_cart(self, user: UserModel) -> None:
         """Clear user's cart."""
         cart = await self.get_or_create_cart(user)
+        await validate_cart_ownership(self.session, cart.id, user.id)
+
         query = select(CartItem).where(CartItem.cart_id == cart.id)
         result = await self.session.execute(query)
         items = result.scalars().all()
@@ -75,6 +81,8 @@ class ShoppingCartService:
     async def get_cart(self, user: UserModel) -> Cart:
         """Get user's cart with all items."""
         cart = await self.get_or_create_cart(user)
+        await validate_cart_ownership(self.session, cart.id, user.id)
+
         # Eagerly load items and their related movie data
         query = (
             select(Cart)
