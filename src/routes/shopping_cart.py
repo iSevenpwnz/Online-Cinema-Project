@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -7,7 +7,7 @@ from security.http import get_current_user
 from schemas.shopping_cart import CartResponse
 from services.shopping_cart import ShoppingCartService
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/shopping-cart", tags=["shopping-cart"])
 
 
 @router.get(
@@ -30,6 +30,57 @@ async def get_cart(
     """Get user's shopping cart with all items."""
     service = ShoppingCartService(db)
     cart = await service.get_cart(current_user)
+    return CartResponse.from_dict(cart)
+
+
+@router.get(
+    "/users/{user_id}",
+    response_model=CartResponse,
+    summary="Get any user's shopping cart (admin only)",
+    description=(
+        "<h3>This endpoint allows administrators to view any user's shopping cart.</h3>"
+    ),
+    responses={
+        200: {
+            "description": "Shopping cart retrieved successfully.",
+        },
+        403: {
+            "description": "Not authorized to view other users' carts.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Only administrators can view other users' carts."}
+                }
+            },
+        },
+        404: {
+            "description": "User not found.",
+            "content": {
+                "application/json": {"example": {"detail": "User not found."}}
+            },
+        },
+    },
+)
+async def get_user_cart(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CartResponse:
+    """
+    Get any user's shopping cart (admin only).
+    
+    Args:
+        user_id: ID of the user whose cart to retrieve
+        current_user: The authenticated user making the request
+        db: Database session
+        
+    Returns:
+        CartResponse: The requested user's cart
+        
+    Raises:
+        HTTPException: If not authorized or user not found
+    """
+    service = ShoppingCartService(db)
+    cart = await service.get_user_cart(current_user, user_id)
     return CartResponse.from_dict(cart)
 
 

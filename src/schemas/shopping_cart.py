@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel
+from schemas.movies import MovieListItemSchema
 
 
 class CartItemResponse(BaseModel):
@@ -9,6 +10,7 @@ class CartItemResponse(BaseModel):
     movie_id: int
     movie_name: str
     added_at: datetime
+    movie: MovieListItemSchema
 
     model_config = {"from_attributes": True}
 
@@ -20,6 +22,14 @@ class CartItemResponse(BaseModel):
             movie_id=obj.movie_id,
             movie_name=obj.movie.name,
             added_at=obj.added_at,
+            movie=MovieListItemSchema(
+                id=obj.movie.id,
+                name=obj.movie.name,
+                year=obj.movie.year,
+                imdb=obj.movie.imdb,
+                price=obj.movie.price,
+                genres=[g.name for g in getattr(obj.movie, 'genres', [])] if hasattr(obj.movie, 'genres') else []
+            )
         )
 
 

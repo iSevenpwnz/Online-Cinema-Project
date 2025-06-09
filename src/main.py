@@ -104,7 +104,7 @@ app.include_router(
     movie_router, prefix=f"{api_version_prefix}/theater", tags=["theater"]
 )
 app.include_router(
-    shopping_cart_router, prefix=f"{api_version_prefix}/cart", tags=["cart"]
+    shopping_cart_router, tags=["shopping-cart"]
 )
 app.include_router(payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"])
 app.include_router(orders_router, prefix=f"{api_version_prefix}/orders", tags=["orders"])

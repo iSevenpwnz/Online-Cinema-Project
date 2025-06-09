@@ -3,10 +3,11 @@ from typing import List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from fastapi import HTTPException, status
 
 from database.models.movies import MovieModel
 from database.models.shopping_cart import CartItem, Cart
-from database.models.accounts import UserModel
+from database.models.accounts import UserModel, UserGroupEnum
 from validation.shopping_cart import (
     validate_movie_exists,
     validate_movie_not_in_cart,
@@ -88,7 +89,53 @@ class ShoppingCartService:
             select(Cart)
             .where(Cart.id == cart.id)
             .options(
-                selectinload(Cart.items).selectinload(CartItem.movie)
+                selectinload(Cart.items).selectinload(CartItem.movie).selectinload(MovieModel.genres)
+            )
+        )
+        result = await self.session.execute(query)
+        cart = result.scalar_one()
+        return cart
+
+    async def get_user_cart(self, admin: UserModel, user_id: int) -> Cart:
+        """
+        Get any user's cart (admin only).
+        
+        Args:
+            admin: The admin user making the request
+            user_id: ID of the user whose cart to retrieve
+            
+        Returns:
+            Cart: The requested user's cart
+            
+        Raises:
+            HTTPException: If admin is not authorized or user not found
+        """
+        if not admin.has_group(UserGroupEnum.ADMIN):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only administrators can view other users' carts."
+            )
+            
+        # Check if target user exists
+        query = select(UserModel).where(UserModel.id == user_id)
+        result = await self.session.execute(query)
+        target_user = result.scalar_one_or_none()
+        
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found."
+            )
+            
+        # Get or create cart for target user
+        cart = await self.get_or_create_cart(target_user)
+        
+        # Eagerly load items and their related movie data
+        query = (
+            select(Cart)
+            .where(Cart.id == cart.id)
+            .options(
+                selectinload(Cart.items).selectinload(CartItem.movie).selectinload(MovieModel.genres)
             )
         )
         result = await self.session.execute(query)
