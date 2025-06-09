@@ -23,13 +23,25 @@ router = APIRouter()
         400: {"description": "Cart is empty or contains unavailable movies."},
     },
 )
+@router.post(
+    "/create-from-cart",
+    response_model=OrderResponse,
+    status_code=201,
+    summary="Create order from cart",
+    description="Create an order based on the current user's cart. Optionally specify a movie_id to order only that movie.",
+    responses={
+        201: {"description": "Order created successfully."},
+        400: {"description": "Cart is empty or contains unavailable movies."},
+    },
+)
 async def create_order_from_cart(
+    movie_id: Optional[int] = Query(None, description="ID of the movie to order from the cart. If not provided, all movies from the cart will be ordered."),
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrderResponse:
     service = OrderService(db)
     try:
-        order = await service.create_order_from_cart(current_user)
+        order = await service.create_order_from_cart(current_user, movie_id)
         return OrderResponse.from_orm(order)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

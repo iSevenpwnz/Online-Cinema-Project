@@ -14,7 +14,7 @@ class OrderService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_order_from_cart(self, user: UserModel) -> Order:
+    async def create_order_from_cart(self, user: UserModel, movie_id: Optional[int] = None) -> Order:
         cart_query = (
             select(Cart)
             .where(Cart.user_id == user.id)
@@ -26,10 +26,18 @@ class OrderService:
         if not cart or not cart.items:
             raise ValueError("Cart is empty.")
 
+        # Фільтруємо елементи кошика за movie_id (якщо він заданий)
+        if movie_id is not None:
+            filtered_items = [item for item in cart.items if item.movie_id == movie_id]
+            if not filtered_items:
+                raise ValueError(f"Movie with id {movie_id} is not in the cart.")
+        else:
+            filtered_items = cart.items
+
         total_amount = Decimal("0.00")
         order_items: List[OrderItem] = []
 
-        for item in cart.items:
+        for item in filtered_items:
             movie = item.movie
             total_amount += movie.price
             order_items.append(OrderItem(movie_id=movie.id, price_at_order=movie.price))
@@ -43,7 +51,8 @@ class OrderService:
         )
         self.session.add(order)
 
-        for item in cart.items:
+        # Видаляємо з кошика тільки ті елементи, які замовляємо
+        for item in filtered_items:
             await self.session.delete(item)
 
         await self.session.commit()
