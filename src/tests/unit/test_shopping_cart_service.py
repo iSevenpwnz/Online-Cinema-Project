@@ -168,4 +168,64 @@ async def test_clear_cart(
     # Clear cart
     await service.clear_cart(user)
     cart = await service.get_cart(user)
-    assert len(cart.items) == 0 
+    assert len(cart.items) == 0
+
+
+@pytest.mark.asyncio
+async def test_is_movie_in_any_cart_when_present(
+    service: ShoppingCartService,
+    user: UserModel,
+    movie: MovieModel,
+    db_session: AsyncSession
+):
+    """Test checking if movie is in any cart when it is present."""
+    # Add movie to cart
+    cart = await service.get_or_create_cart(user)
+    cart_item = CartItem(cart_id=cart.id, movie_id=movie.id)
+    db_session.add(cart_item)
+    await db_session.commit()
+
+    is_in_cart = await service.is_movie_in_any_cart(movie.id)
+    assert is_in_cart is True
+
+
+@pytest.mark.asyncio
+async def test_is_movie_in_any_cart_when_not_present(
+    service: ShoppingCartService,
+    movie: MovieModel
+):
+    """Test checking if movie is in any cart when it is not present."""
+    is_in_cart = await service.is_movie_in_any_cart(movie.id)
+    assert is_in_cart is False
+
+
+@pytest.mark.asyncio
+async def test_is_movie_in_any_cart_with_multiple_carts(
+    service: ShoppingCartService,
+    user: UserModel,
+    movie: MovieModel,
+    db_session: AsyncSession
+):
+    """Test checking if movie is in any cart when it is present in multiple carts."""
+    # Create another user and cart
+    other_user = UserModel.create(
+        email="other@example.com",
+        raw_password="TestPassword1!",
+        group_id=1
+    )
+    other_user.is_active = True
+    db_session.add(other_user)
+    await db_session.commit()
+    
+    # Get or create carts
+    cart = await service.get_or_create_cart(user)
+    other_cart = await service.get_or_create_cart(other_user)
+
+    # Add movie to both carts
+    cart_item1 = CartItem(cart_id=cart.id, movie_id=movie.id)
+    cart_item2 = CartItem(cart_id=other_cart.id, movie_id=movie.id)
+    db_session.add_all([cart_item1, cart_item2])
+    await db_session.commit()
+
+    is_in_cart = await service.is_movie_in_any_cart(movie.id)
+    assert is_in_cart is True 

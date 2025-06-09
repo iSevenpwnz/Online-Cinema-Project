@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -6,8 +6,9 @@ from database.models.accounts import UserModel
 from security.http import get_current_user
 from schemas.shopping_cart import CartResponse
 from services.shopping_cart import ShoppingCartService
+from database.models.accounts import UserGroupEnum
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/shopping-cart", tags=["shopping-cart"])
 
 
 @router.get(
@@ -30,6 +31,57 @@ async def get_cart(
     """Get user's shopping cart with all items."""
     service = ShoppingCartService(db)
     cart = await service.get_cart(current_user)
+    return CartResponse.from_dict(cart)
+
+
+@router.get(
+    "/users/{user_id}",
+    response_model=CartResponse,
+    summary="Get any user's shopping cart (admin only)",
+    description=(
+        "<h3>This endpoint allows administrators to view any user's shopping cart.</h3>"
+    ),
+    responses={
+        200: {
+            "description": "Shopping cart retrieved successfully.",
+        },
+        403: {
+            "description": "Not authorized to view other users' carts.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Only administrators can view other users' carts."}
+                }
+            },
+        },
+        404: {
+            "description": "User not found.",
+            "content": {
+                "application/json": {"example": {"detail": "User not found."}}
+            },
+        },
+    },
+)
+async def get_user_cart(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CartResponse:
+    """
+    Get any user's shopping cart (admin only).
+
+    Args:
+        user_id: ID of the user whose cart to retrieve
+        current_user: The authenticated user making the request
+        db: Database session
+
+    Returns:
+        CartResponse: The requested user's cart
+
+    Raises:
+        HTTPException: If not authorized or user not found
+    """
+    service = ShoppingCartService(db)
+    cart = await service.get_user_cart(current_user, user_id)
     return CartResponse.from_dict(cart)
 
 
@@ -74,8 +126,8 @@ async def add_movie_to_cart(
         cart = await service.get_cart(current_user)
         return CartResponse.from_dict(cart)
     except ValueError as e:
-        status = 404 if "not found" in str(e).lower() else 400
-        raise HTTPException(status_code=status, detail=str(e))
+        status_code = status.HTTP_404_NOT_FOUND if "not found" in str(e).lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=str(e))
 
 
 @router.delete(
@@ -125,3 +177,47 @@ async def clear_cart(
     await service.clear_cart(current_user)
     cart = await service.get_cart(current_user)
     return CartResponse.from_dict(cart)
+
+
+@router.get(
+    "/check-movie/{movie_id}",
+    summary="Check if movie is in any cart",
+    description=(
+        "<h3>This endpoint checks if a movie is present in any user's cart.</h3>"
+    ),
+    responses={
+        200: {
+            "description": "Movie check completed successfully.",
+            "content": {
+                "application/json": {
+                    "example": {"is_in_cart": True}
+                }
+            },
+        }
+    },
+)
+async def check_movie_in_carts(
+    movie_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Check if movie is present in any user's cart.
+
+    Args:
+        movie_id: ID of the movie to check
+        current_user: The authenticated user making the request
+        db: Database session
+
+    Returns:
+        dict: Contains boolean indicating if movie is in any cart
+    """
+    if not current_user.has_group(UserGroupEnum.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can check movie presence in carts."
+        )
+
+    service = ShoppingCartService(db)
+    is_in_cart = await service.is_movie_in_any_cart(movie_id)
+    return {"is_in_cart": is_in_cart}
