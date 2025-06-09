@@ -39,8 +39,9 @@ from schemas import (
 from schemas.accounts import (
     ChangePasswordRequestSchema,
     GenerateActivationLinkRequestSchema,
+    LogoutRequestSchema,
 )
-from security.http import get_current_user
+from security.http import get_current_user, get_current_user_if_active
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -832,3 +833,93 @@ async def refresh_access_token(
     new_access_token = jwt_manager.create_access_token({"user_id": user_id})
 
     return TokenRefreshResponseSchema(access_token=new_access_token)
+
+
+@router.post(
+    "/logout/",
+    summary="Logout User",
+    description="Invalidate a user's refresh token, effectively logging them out.",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {
+            "description": "Not Found - Refresh token not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Refresh token not found."}
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred while logging out.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred while logging out."
+                    }
+                }
+            },
+        },
+    },
+    openapi_extra={
+        "requestBody": {
+            "description": "The refresh token to be invalidated for logout.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    }
+                }
+            }
+        }
+    },
+)
+async def logout(
+    token_data: LogoutRequestSchema,
+    user: UserModel = Depends(get_current_user_if_active),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponseSchema:
+    """
+    Invalidate a user's refresh token, logging them out.
+
+    Args:
+        token_data (LogoutRequestSchema): Contains the refresh token to be invalidated.
+        user (UserModel): The currently authenticated and active user.
+        db (AsyncSession): The asynchronous database session.
+
+    Returns:
+        MessageResponseSchema: A message indicating successful logout.
+
+    Raises:
+        HTTPException:
+            - 404 Not Found if the refresh token is not found.
+            - 500 Internal Server Error if an error occurs during logout.
+    """
+    try:
+        refresh_token = await db.scalar(
+            select(RefreshTokenModel).where(
+                RefreshTokenModel.token == token_data.refresh_token,
+                RefreshTokenModel.user_id == user.id,
+            )
+        )
+
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Refresh token not found.",
+            )
+
+        await db.execute(
+            delete(RefreshTokenModel).where(
+                RefreshTokenModel.id == refresh_token.id
+            )
+        )
+
+        await db.commit()
+
+        return MessageResponseSchema(message="Successfully logged out.")
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while logging out.",
+        ) from e
