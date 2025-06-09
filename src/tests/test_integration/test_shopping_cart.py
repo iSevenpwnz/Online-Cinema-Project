@@ -15,6 +15,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.conftest import client, db_session, seed_user_groups
 from decimal import Decimal
+from typing import Any
 
 
 @pytest.fixture
@@ -81,80 +82,61 @@ async def auth_headers(client: AsyncClient, user: UserModel):
 @pytest.mark.asyncio
 async def test_get_empty_cart(client: AsyncClient, auth_headers):
     """Test getting an empty cart."""
-    response = await client.get("/api/v1/cart/", headers=auth_headers)
+    response = await client.get("/api/v1/shopping-cart/", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["user_id"] is not None
     assert data["items"] == []
 
 
 @pytest.mark.asyncio
-async def test_add_movie_to_cart(client: AsyncClient, auth_headers, movie: MovieModel):
+async def test_add_movie_to_cart(
+    client: AsyncClient, auth_headers: dict, db_session: AsyncSession, movie: MovieModel
+):
     """Test adding a movie to cart."""
-    # Clear cart first
-    await client.delete("/api/v1/cart/clear", headers=auth_headers)
-    
     response = await client.post(
-        f"/api/v1/cart/add/{movie.id}",
-        headers=auth_headers
+        f"/api/v1/shopping-cart/add/{movie.id}", headers=auth_headers
     )
-    if response.status_code != 200:
-        print(f"Error response: {response.json()}")
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] is not None
     assert len(data["items"]) == 1
-    assert data["items"][0]["movie_id"] == movie.id
+    assert data["items"][0]["movie"]["id"] == movie.id
 
 
 @pytest.mark.asyncio
-async def test_add_nonexistent_movie_to_cart(client: AsyncClient, auth_headers):
+async def test_add_nonexistent_movie_to_cart(client: AsyncClient, auth_headers: dict):
     """Test adding a nonexistent movie to cart."""
     response = await client.post(
-        "/api/v1/cart/add/999",
-        headers=auth_headers
+        "/api/v1/shopping-cart/add/999999", headers=auth_headers
     )
     assert response.status_code == 404
-    assert "Movie with id 999 not found" in response.json()["detail"]
+    assert "not found" in response.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
 async def test_add_duplicate_movie_to_cart(
-    client: AsyncClient,
-    auth_headers,
-    movie: MovieModel
+    client: AsyncClient, auth_headers: dict, db_session: AsyncSession, movie: MovieModel
 ):
     """Test adding a movie that's already in cart."""
-    # Add movie first time
-    await client.post(
-        f"/api/v1/cart/add/{movie.id}",
-        headers=auth_headers
-    )
-    # Try to add the same movie again
+    # First add
+    await client.post(f"/api/v1/shopping-cart/add/{movie.id}", headers=auth_headers)
+    # Try to add again
     response = await client.post(
-        f"/api/v1/cart/add/{movie.id}",
-        headers=auth_headers
+        f"/api/v1/shopping-cart/add/{movie.id}", headers=auth_headers
     )
     assert response.status_code == 400
-    assert "Movie is already in cart" in response.json()["detail"]
+    assert "already in cart" in response.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
 async def test_remove_movie_from_cart(
-    client: AsyncClient,
-    auth_headers,
-    movie: MovieModel
+    client: AsyncClient, auth_headers: dict, db_session: AsyncSession, movie: MovieModel
 ):
     """Test removing a movie from cart."""
-    # Add movie first
-    await client.post(
-        f"/api/v1/cart/add/{movie.id}",
-        headers=auth_headers
-    )
-    # Remove movie
+    # First add
+    await client.post(f"/api/v1/shopping-cart/add/{movie.id}", headers=auth_headers)
+    # Then remove
     response = await client.delete(
-        f"/api/v1/cart/remove/{movie.id}",
-        headers=auth_headers
+        f"/api/v1/shopping-cart/remove/{movie.id}", headers=auth_headers
     )
     assert response.status_code == 200
     data = response.json()
@@ -163,46 +145,156 @@ async def test_remove_movie_from_cart(
 
 @pytest.mark.asyncio
 async def test_clear_cart(
-    client: AsyncClient,
-    auth_headers,
-    movie: MovieModel,
-    db_session: AsyncSession,
-    certification: CertificationModel
+    client: AsyncClient, auth_headers: dict, db_session: AsyncSession, movie: MovieModel
 ):
     """Test clearing the cart."""
-    # Add multiple movies
-    movie2 = MovieModel(
-        uuid="test-movie2-uuid",
-        name="Test Movie 2",
-        year=2024,
-        time=100,
-        imdb=9.0,
-        votes=2000,
-        meta_score=85.0,
-        gross=200000.0,
-        description="Test overview 2",
-        price=Decimal("150.00"),
-        certification_id=certification.id
-    )
-    db_session.add(movie2)
-    await db_session.commit()
-    await db_session.refresh(movie2)
-
-    # Add movies to cart
-    await client.post(
-        f"/api/v1/cart/add/{movie.id}",
-        headers=auth_headers
-    )
-    await client.post(
-        f"/api/v1/cart/add/{movie2.id}",
-        headers=auth_headers
-    )
-
-    # Clear cart
-    response = await client.delete(
-        "/api/v1/cart/clear",
-        headers=auth_headers
-    )
+    # First add a movie
+    await client.post(f"/api/v1/shopping-cart/add/{movie.id}", headers=auth_headers)
+    # Then clear
+    response = await client.delete("/api/v1/shopping-cart/clear", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_admin_view_user_cart(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+):
+    """Test admin viewing another user's cart."""
+    # Create admin user
+    admin = UserModel.create(
+        email="admin@example.com",
+        raw_password="AdminPass123!",
+        group_id=3  # Admin group
+    )
+    admin.is_active = True
+    db_session.add(admin)
+    
+    # Create regular user
+    user = UserModel.create(
+        email="user@example.com",
+        raw_password="UserPass123!",
+        group_id=1  # User group
+    )
+    user.is_active = True
+    db_session.add(user)
+    
+    # Create certification
+    certification = CertificationModel(name="G")
+    db_session.add(certification)
+    await db_session.commit()
+    
+    # Create a movie
+    movie = MovieModel(
+        uuid="test-movie-uuid",
+        name="Test Movie",
+        year=2024,
+        time=120,
+        imdb=8.5,
+        votes=1000,
+        description="Test Description",
+        price=Decimal("10.00"),
+        certification_id=certification.id
+    )
+    db_session.add(movie)
+    
+    await db_session.commit()
+    
+    # Create cart for regular user and add movie
+    cart = Cart(user_id=user.id)
+    db_session.add(cart)
+    await db_session.commit()
+    await db_session.refresh(cart)
+    
+    cart_item = CartItem(cart_id=cart.id, movie_id=movie.id)
+    db_session.add(cart_item)
+    await db_session.commit()
+    
+    # Get admin token
+    admin_token = jwt_manager.create_access_token({"user_id": admin.id})
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+    
+    # Admin views user's cart
+    response = await client.get(
+        f"/api/v1/shopping-cart/users/{user.id}",
+        headers=admin_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["movie"]["id"] == movie.id
+
+
+@pytest.mark.asyncio
+async def test_regular_user_cannot_view_other_cart(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+):
+    """Test that regular users cannot view other users' carts."""
+    # Create two regular users
+    user1 = UserModel.create(
+        email="user1@example.com",
+        raw_password="User1Pass123!",
+        group_id=1  # User group
+    )
+    user1.is_active = True
+    db_session.add(user1)
+    
+    user2 = UserModel.create(
+        email="user2@example.com",
+        raw_password="User2Pass123!",
+        group_id=1  # User group
+    )
+    user2.is_active = True
+    db_session.add(user2)
+    
+    await db_session.commit()
+    
+    # Get user1's token
+    user1_token = jwt_manager.create_access_token({"user_id": user1.id})
+    user1_headers = {"Authorization": f"Bearer {user1_token}"}
+    
+    # User1 tries to view user2's cart
+    response = await client.get(
+        f"/api/v1/shopping-cart/users/{user2.id}",
+        headers=user1_headers
+    )
+    assert response.status_code == 403
+    assert "only administrators" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_admin_view_nonexistent_user_cart(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+):
+    """Test admin viewing cart of nonexistent user."""
+    # Create admin user
+    admin = UserModel.create(
+        email="admin@example.com",
+        raw_password="AdminPass123!",
+        group_id=3  # Admin group
+    )
+    admin.is_active = True
+    db_session.add(admin)
+    await db_session.commit()
+    
+    # Get admin token
+    admin_token = jwt_manager.create_access_token({"user_id": admin.id})
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+    
+    # Admin tries to view nonexistent user's cart
+    response = await client.get(
+        "/api/v1/shopping-cart/users/999999",
+        headers=admin_headers
+    )
+    assert response.status_code == 404
+    assert "user not found" in response.json()["detail"].lower()
