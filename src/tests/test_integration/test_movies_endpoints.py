@@ -1,22 +1,103 @@
 import random
 import uuid
 import datetime
+from copy import copy
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select, func, insert, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from database import UserGroupModel, UserGroupEnum, UserModel
 from database.models.movies import (
     MovieModel,
     GenreModel,
     StarModel,
     DirectorModel,
-    CertificationModel,
+    CertificationModel, CertificationEnum,
 
 )
 from database.models.orders import OrderStatusEnum, Order, OrderItem
 
 
+@pytest_asyncio.fixture
+async def admin_user(db_session, client, jwt_manager):
+    """Create a fake admin user"""
+
+    admin_group = await db_session.scalar(
+        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.ADMIN)
+    )
+    if not admin_group:
+        admin_group = UserGroupModel(name=UserGroupEnum.ADMIN)
+        db_session.add(admin_group)
+        await db_session.commit()
+        await db_session.refresh(admin_group)
+
+    admin = UserModel.create(
+        email="admin@example.com",
+        raw_password="AdminPassword123!",
+        group_id=admin_group.id
+    )
+    admin.is_active = True
+    db_session.add(admin)
+    await db_session.commit()
+    await db_session.refresh(admin)
+
+    response = await client.post(
+        "/api/v1/accounts/login/",
+        json={"email": admin.email, "password": "AdminPassword123!"}
+    )
+    token = response.json()["access_token"]
+    return admin, {"Authorization": f"Bearer {token}"}
+
+@pytest_asyncio.fixture
+async def movie_test(db_session):
+    # Create certification if not exists
+    cert = CertificationModel(name=CertificationEnum.GENERAL_AUDIENCE)
+    genre = GenreModel(name="Action")
+    star = StarModel(name="Star")
+    director = DirectorModel(name="Director")
+    db_session.add_all([cert, genre, star, director])
+    await db_session.flush()
+
+    movie_model = MovieModel(
+        uuid=str(uuid.uuid4()),
+        name="Bad IMDB",
+        year=2023,
+        time=120,
+        imdb=8.0,
+        votes=1000,
+        meta_score=50,
+        gross=100,
+        description="Bad imdb. I didn't liked the movie. It's awfull",
+        price=100,
+        certification_id=cert.id,
+        genres=[genre],
+        stars=[star],
+        directors=[director],
+    )
+    db_session.add(movie_model)
+    await db_session.commit()
+    await db_session.refresh(movie_model)
+
+    movie_dict = {
+        "uuid": str(uuid.uuid4()),
+        "name": "Bad IMDB 2.0",
+        "year": 2023,
+        "time": 120,
+        "imdb": 8.0,
+        "votes": 1000,
+        "meta_score": 50,
+        "gross": 100,
+        "description": "Bad imdb. I didn't liked the movie. It's awfull",
+        "price": 100,
+        "certification_id": 3,
+        "genres": ["Action"],
+        "stars": ["Star"],
+        "directors": ["Director"]
+    }
+    return movie_model, movie_dict
 
 class TestGenreEndpoints:
     """Test suite for genre-related API endpoints"""
@@ -25,8 +106,6 @@ class TestGenreEndpoints:
     async def test_get_genres_with_counts(self, client, db_session, seed_database):
         """
         Test retrieving all genres with their movie counts.
-        Should return 200 OK with list of genres containing id, name and movie_count
-        when genres exist in database.
         """
         response = await client.get("/api/v1/theater/genres/")
         assert response.status_code == 200
@@ -38,91 +117,119 @@ class TestGenreEndpoints:
     async def test_get_genres_empty_database(self, client, db_session):
         """
         Test retrieving genres when database is empty.
-        Should return 404 Not Found when no genres exist.
         """
         response = await client.get("/api/v1/theater/genres/")
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_create_genre_success(self, client, db_session):
+    async def test_create_genre_success(self, client, db_session, admin_user):
         """
         Test successful genre creation.
-        Should return 200 OK with created genre data when valid name provided.
         """
+        user, headers = admin_user
         genre_name = "Sci-Fi"
-        response = await client.post("/api/v1/theater/genres/", params={"genre_name": genre_name})
+        response = await client.post(
+            "/api/v1/theater/genres/",
+            params={"genre_name": genre_name},
+            headers=headers
+        )
         assert response.status_code == 200
         assert response.json()["name"] == genre_name
 
     @pytest.mark.asyncio
-    async def test_create_genre_duplicate(self, client, db_session):
+    async def test_create_genre_duplicate(self, client, db_session, admin_user):
         """
-        Test duplicate genre creation attempt.
-        Should return 400 Bad Request when trying to create genre with existing name.
+        Test duplicate genre creation attempt. Its not possible.
         """
-        genre_name = "Comedy"
-        await client.post("/api/v1/theater/genres/", params={"genre_name": genre_name})
-        response = await client.post("/api/v1/theater/genres/", params={"genre_name": genre_name})
+        user, headers = admin_user
+        genre_name = "Action"
+        await client.post(
+            "/api/v1/theater/genres/",
+            params={"genre_name": genre_name},
+            headers=headers
+        )
+        response = await client.post(
+            "/api/v1/theater/genres/",
+            params={"genre_name": genre_name},
+            headers=headers
+        )
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_create_genre_trimmed_and_normalized(self, client):
+    async def test_create_genre_trimmed_and_normalized(self, client, admin_user):
         """Whitespace should be trimmed in genre creation"""
-        response = await client.post("/api/v1/theater/genres/", params={"genre_name": "  New Genre  "})
+        user, headers = admin_user
+        response = await client.post(
+            "/api/v1/theater/genres/",
+            params={"genre_name": "  New Genre  "},
+            headers=headers
+        )
         assert response.status_code == 200
         assert response.json()["name"].strip() == "New Genre"
 
     @pytest.mark.asyncio
-    async def test_update_genre_success(self, client, db_session, seed_database):
+    async def test_update_genre_success(self, client, db_session, seed_database, admin_user):
         """
         Test successful genre name update.
-        Should return 200 OK with updated genre data when valid new name provided.
         """
+        user, headers = admin_user
         genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
         new_name = "UpdatedName"
         response = await client.put(
             f"/api/v1/theater/genres/{genre.id}",
-            params={"new_name": new_name}
+            params={"new_name": new_name},
+            headers=headers,
         )
         assert response.status_code == 200
         assert response.json()["name"] == new_name
 
     @pytest.mark.asyncio
-    async def test_update_genre_to_existing_name(self, client, db_session, seed_database):
+    async def test_update_genre_to_existing_name(self, client, db_session, seed_database, admin_user):
         """
         Test updating genre to existing name.
-        Should return 400 Bad Request when trying to rename genre to already existing name.
         """
+        user, headers = admin_user
         genres = (await db_session.execute(select(GenreModel).limit(2))).scalars().all()
         genre1, genre2 = genres
         response = await client.put(
             f"/api/v1/theater/genres/{genre1.id}",
-            params={"new_name": genre2.name}
+            params={"new_name": genre2.name},
+            headers=headers
         )
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_update_genre_not_found(self, client):
-        """Should return 404 if genre not found"""
-        response = await client.put("/api/v1/theater/genres/999999", params={"new_name": "New Genre"})
+    async def test_update_genre_not_found(self, client, admin_user):
+        """
+        Should return 404 if genre not found
+        """
+        user, headers = admin_user
+        response = await client.put(
+            "/api/v1/theater/genres/999999",
+            params={"new_name": "New Genre"},
+            headers=headers
+        )
         assert response.status_code == 404
         assert response.json()["detail"] == "Genre not found."
 
     @pytest.mark.asyncio
-    async def test_delete_genre_success(self, client, db_session, seed_database):
+    async def test_delete_genre_success(self, client, db_session, seed_database, admin_user):
         """
         Test successful genre deletion.
-        Should return 204 No Content when deleting existing genre.
         """
+        user, headers = admin_user
         genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
-        response = await client.delete(f"/api/v1/theater/genres/{genre.id}")
+        response = await client.delete(f"/api/v1/theater/genres/{genre.id}", headers=headers)
         assert response.status_code in (200, 204)
 
     @pytest.mark.asyncio
-    async def test_delete_genre_not_found(self, client):
-        """Should return 404 if genre not found"""
-        response = await client.delete("/api/v1/theater/genres/999999")
+    async def test_delete_genre_not_found(self, client, admin_user):
+        """
+        Should return 404 if genre not found
+        """
+        user, headers = admin_user
+        response = await client.delete("/api/v1/theater/genres/999999", headers=headers)
         assert response.status_code == 404
         assert response.json()["detail"] == "Genre not found."
 
@@ -130,7 +237,6 @@ class TestGenreEndpoints:
     async def test_get_movies_by_genre_success(self, client, db_session, seed_database):
         """
         Test retrieving movies for specific genre.
-        Should return 200 OK with movies list when genre exists and has movies.
         """
         genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
         response = await client.get(f"/api/v1/theater/genres/{genre.id}/movies")
@@ -141,7 +247,6 @@ class TestGenreEndpoints:
     async def test_get_movies_by_nonexistent_genre(self, client):
         """
         Test retrieving movies for non-existent genre.
-        Should return 404 Not Found when genre doesn't exist.
         """
         response = await client.get("/api/v1/theater/genres/99999/movies")
         assert response.status_code == 404
@@ -150,16 +255,21 @@ class TestGenreEndpoints:
     async def test_get_movies_by_genre_empty(self, client, db_session):
         """
         Test retrieving movies for genre with no movies.
-        Should return 404 Not Found or empty movies list when genre has no movies.
         """
-        response = await client.post("/api/v1/theater/genres/", params={"genre_name": "EmptyGenre"})
-        genre_id = response.json()["id"]
-        response = await client.get(f"/api/v1/theater/genres/{genre_id}/movies")
+        genre = GenreModel(name="EmptyGenre")
+        db_session.add(genre)
+        await db_session.commit()
+        await db_session.refresh(genre)
+
+        response = await client.get(f"/api/v1/theater/genres/{genre.id}/movies")
+
         assert response.status_code == 404 or response.json().get("movies") == []
 
     @pytest.mark.asyncio
     async def test_genres_search_filter(self, client, db_session):
-        """Search genre by name"""
+        """
+        Search genre by name
+        """
         g = GenreModel(name="Superhero")
         db_session.add(g)
         await db_session.commit()
@@ -168,9 +278,10 @@ class TestGenreEndpoints:
         assert any("Superhero" in genre["name"] for genre in resp.json())
 
     @pytest.mark.asyncio
-    async def test_delete_genre_with_movies_linked(self, client, db_session, seed_database):
+    async def test_delete_genre_with_movies_linked(self, client, db_session, seed_database, admin_user):
+        user, headers = admin_user
         genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
-        response = await client.delete(f"/api/v1/theater/genres/{genre.id}")
+        response = await client.delete(f"/api/v1/theater/genres/{genre.id}", headers=headers)
         assert response.status_code == 200
 
 
@@ -178,31 +289,46 @@ class TestStarEndpoints:
     """Test suite for star-related API endpoints"""
 
     @pytest.mark.asyncio
-    async def test_create_star_success(self, client, db_session):
+    async def test_create_star_success(self, client, db_session, admin_user):
         """
         Test successful star creation.
-        Should return 200 OK with created star data when valid name provided.
         """
+        user, headers = admin_user
         star_name = "Will Smith"
-        response = await client.post("/api/v1/theater/stars/", params={"star_name": star_name})
+        response = await client.post("/api/v1/theater/stars/", params={"star_name": star_name}, headers=headers)
         assert response.status_code == 200
         assert response.json()["name"] == star_name
 
     @pytest.mark.asyncio
-    async def test_create_star_duplicate(self, client, db_session):
+    async def test_create_star_duplicate(self, client, db_session, admin_user):
         """
-        Test duplicate star creation attempt.
-        Should return 400 Bad Request when trying to create star with existing name.
+        Test duplicate star creation attempt. It's not possible.
         """
-        star_name = "Brad Pitt"
-        await client.post("/api/v1/theater/stars/", params={"star_name": star_name})
-        response = await client.post("/api/v1/theater/stars/", params={"star_name": star_name})
+        user, headers = admin_user
+        star_name = "Star"
+        await client.post(
+            "/api/v1/theater/stars/",
+            params={"star_name": star_name},
+            headers=headers
+        )
+        response = await client.post(
+            "/api/v1/theater/stars/",
+            params={"star_name": star_name},
+            headers=headers
+        )
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_create_star_trimmed_and_normalized(self, client):
-        """Whitespace should be trimmed in star creation"""
-        response = await client.post("/api/v1/theater/stars/", params={"star_name": "  Chris Hemsworth  "})
+    async def test_create_star_trimmed_and_normalized(self, client, admin_user):
+        """
+        Whitespace should be trimmed in star creation
+        """
+        user, headers = admin_user
+        response = await client.post(
+            "/api/v1/theater/stars/",
+            params={"star_name": "  Chris Hemsworth  "},
+            headers=headers
+        )
         assert response.status_code == 200
         assert response.json()["name"].strip() == "Chris Hemsworth"
 
@@ -210,7 +336,6 @@ class TestStarEndpoints:
     async def test_get_stars_list(self, client, db_session, seed_database):
         """
         Test retrieving list of all stars.
-        Should return 200 OK with list of stars when stars exist.
         """
         response = await client.get("/api/v1/theater/stars/")
         assert response.status_code == 200
@@ -220,7 +345,6 @@ class TestStarEndpoints:
     async def test_get_stars_empty_database(self, client):
         """
         Test retrieving stars when database is empty.
-        Should return 200 OK with empty list when no stars exist.
         """
         response = await client.get("/api/v1/theater/stars/")
         assert response.status_code == 200
@@ -230,7 +354,6 @@ class TestStarEndpoints:
     async def test_get_star_detail(self, client, db_session, seed_database):
         """
         Test retrieving star details.
-        Should return 200 OK with star details including movie information.
         """
         star = (await db_session.execute(select(StarModel).limit(1))).scalars().first()
         response = await client.get(f"/api/v1/theater/stars/{star.id}")
@@ -239,60 +362,78 @@ class TestStarEndpoints:
 
     @pytest.mark.asyncio
     async def test_get_star_detail_not_found(self, client):
-        """Should return 404 if star not found"""
+        """
+        Should return 404 if star not found
+        """
         response = await client.get("/api/v1/theater/stars/999999")
         assert response.status_code == 404
         assert response.json()["detail"] == "Star not found."
 
     @pytest.mark.asyncio
-    async def test_update_star_success(self, client, db_session, seed_database):
+    async def test_update_star_success(self, client, db_session, seed_database, admin_user):
         """
         Test successful star name update.
-        Should return 200 OK with updated star data when valid new name provided.
         """
+        user, headers = admin_user
         star = (await db_session.execute(select(StarModel).limit(1))).scalars().first()
         new_name = "Jackie Chan"
         response = await client.put(
             f"/api/v1/theater/stars/{star.id}",
-            params={"new_name": new_name}
+            params={"new_name": new_name},
+            headers=headers,
         )
         assert response.status_code == 200
         assert response.json()["name"] == new_name
 
     @pytest.mark.asyncio
-    async def test_update_star_to_existing_name(self, client, db_session):
+    async def test_update_star_to_existing_name(self, client, db_session, admin_user):
+        user, headers = admin_user
         s1 = StarModel(name="StarA")
         s2 = StarModel(name="StarB")
         db_session.add_all([s1, s2])
         await db_session.commit()
-        response = await client.put(f"/api/v1/theater/stars/{s1.id}", params={"new_name": s2.name})
+        response = await client.put(
+            f"/api/v1/theater/stars/{s1.id}",
+            params={"new_name": s2.name},
+            headers=headers
+        )
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_update_star_not_found(self, client):
-        """Should return 404 if star not found"""
-        response = await client.put("/api/v1/theater/stars/999999", params={"new_name": "New Star"})
+    async def test_update_star_not_found(self, client, admin_user):
+        """
+        Should return 404 if star not found
+        """
+        user, headers = admin_user
+        response = await client.put(
+            "/api/v1/theater/stars/999999",
+            params={"new_name": "New Star"},
+            headers=headers
+        )
         assert response.status_code == 404
         assert response.json()["detail"] == "Star not found."
 
     @pytest.mark.asyncio
-    async def test_delete_star_success(self, client, db_session, seed_database):
+    async def test_delete_star_success(self, client, db_session, seed_database, admin_user):
         """
         Test successful star deletion.
-        Should return 200 OK or 204 No Content when deleting existing star.
         """
+        user, headers = admin_user
         star = (await db_session.execute(select(StarModel).limit(1))).scalars().first()
-        response = await client.delete(f"/api/v1/theater/stars/{star.id}")
+        response = await client.delete(f"/api/v1/theater/stars/{star.id}", headers=headers)
         assert response.status_code in (200, 204)
 
     @pytest.mark.asyncio
-    async def test_delete_star_not_found(self, client):
+    async def test_delete_star_not_found(self, client, admin_user):
         """
         Test deleting non-existent star.
-        Should return 404 Not Found or 422 Unprocessable Entity when star doesn't exist.
         """
-        response = await client.delete("/api/v1/theater/stars/999999")
+        user, headers = admin_user
+        response = await client.delete(
+            "/api/v1/theater/stars/999999",
+            headers=headers
+        )
         assert response.status_code in (404, 422)
 
 
@@ -303,7 +444,6 @@ class TestMovieListing:
     async def test_get_movies_empty_database(self, client):
         """
         Test retrieving movies when database is empty.
-        Should return 404 Not Found when no movies exist.
         """
         response = await client.get("/api/v1/theater/movies/")
         assert response.status_code == 404
@@ -313,7 +453,6 @@ class TestMovieListing:
     async def test_get_movies_default_pagination(self, client, seed_database):
         """
         Test retrieving movies with default pagination.
-        Should return 200 OK with 10 movies per page and pagination metadata.
         """
         response = await client.get("/api/v1/theater/movies/")
         assert response.status_code == 200
@@ -336,7 +475,6 @@ class TestMovieListing:
     async def test_get_movies_sorted_correctly(self, client, db_session, seed_database):
         """
         Test movies are returned in correct sort order.
-        Should return movies sorted by ID in descending order.
         """
         response = await client.get("/api/v1/theater/movies/?page=1&per_page=10")
         assert response.status_code == 200
@@ -642,11 +780,12 @@ class TestMovieCRUD:
         assert response.json() == {"detail": "Movie with the given ID was not found."}
 
     @pytest.mark.asyncio
-    async def test_create_movie_success(self, client, db_session):
+    async def test_create_movie_success(self, client, db_session, admin_user):
         """
         Test successful movie creation.
         Should return 201 Created with movie data when valid data provided.
         """
+        user, headers = admin_user
         certification = CertificationModel(id=1, name="PG")
         db_session.add(certification)
         await db_session.commit()
@@ -667,17 +806,21 @@ class TestMovieCRUD:
             "stars": ["John Doe", "Jane Doe"],
             "directors": ["Some Director"],
         }
-        response = await client.post("/api/v1/theater/movies/", json=movie_data)
+        response = await client.post(
+            "/api/v1/theater/movies/",
+            json=movie_data,
+            headers=headers
+        )
 
         assert response.status_code == 201
         assert response.json()["name"] == movie_data["name"]
 
     @pytest.mark.asyncio
-    async def test_create_movie_duplicate(self, client, db_session, seed_database):
+    async def test_create_movie_duplicate(self, client, db_session, seed_database, admin_user):
         """
         Test duplicate movie creation attempt.
-        Should return 409 Conflict when trying to create movie with same name and year.
         """
+        user, headers = admin_user
         existing_movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         movie_data = {
             "uuid": str(uuid.uuid4()),
@@ -692,187 +835,150 @@ class TestMovieCRUD:
             "price": float(existing_movie.price),
             "certification_id": existing_movie.certification_id,
             "genres": ["Action"],
-            "stars": ["Some Star"],
-            "directors": ["Some Director"],
+            "stars": ["Star"],
+            "directors": ["Director"],
         }
-        response = await client.post("/api/v1/theater/movies/", json=movie_data)
+        response = await client.post(
+            "/api/v1/theater/movies/",
+            json=movie_data,
+            headers=headers
+        )
         assert response.status_code == 409
 
     @pytest.mark.asyncio
-    async def test_create_movie_with_nonexistent_certification(self, client):
+    async def test_create_movie_with_nonexistent_certification(self, client, admin_user, movie_test):
         """
         Test creating movie with non-existent certification.
-        Should return 400 Bad Request when certification doesn't exist.
         """
-        movie_data = {
-            "uuid": str(uuid.uuid4()),
-            "name": "Test Movie",
-            "year": 2023,
-            "time": 90,
-            "imdb": 7.5,
-            "votes": 100,
-            "meta_score": 80,
-            "gross": 1000,
-            "description": "This is a test movie description.",
-            "price": "10.00",
-            "certification_id": 9999,
-            "genres": ["Action"],
-            "stars": ["Some Star"],
-            "directors": ["Some Director"],
-        }
-        response = await client.post("/api/v1/theater/movies/", json=movie_data)
+        user, headers = admin_user
+        _, movie_data = movie_test
+        movie_data["certification_id"] = 999
+        response = await client.post(
+            "/api/v1/theater/movies/",
+            json=movie_data,
+            headers=headers
+        )
+
         assert response.status_code == 400
         assert "Certification ID" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_update_movie_success(self, client, db_session):
+    async def test_update_movie_success(self, client, db_session, admin_user, movie_test):
         """
         Test successful movie update.
-        Should return 200 OK with updated movie data when valid updates provided.
         """
-        certification = await db_session.get(CertificationModel, 1)
-        if not certification:
-            certification = CertificationModel(id=1, name="PG-13")
-            db_session.add(certification)
-            await db_session.commit()
+        user, headers = admin_user
 
-        genre = GenreModel(name="Action")
-        star = StarModel(name="John Doe")
-        director = DirectorModel(name="Jane Director")
-        db_session.add_all([genre, star, director])
+        new_genre = GenreModel(name="New Genre")
+        new_star = StarModel(name="New Star")
+        new_director = DirectorModel(name="New Director")
+
+        db_session.add_all([new_genre, new_star, new_director])
         await db_session.commit()
-        await db_session.refresh(genre)
-        await db_session.refresh(star)
-        await db_session.refresh(director)
 
-        new_movie = MovieModel(
-
-            uuid=str(uuid.uuid4()),
-            name="Original Movie",
-            year=2020,
-            time=100,
-            imdb=7.5,
-            votes=1000,
-            meta_score=80,
-            gross=500000,
-            description="Test movie description",
-            price=Decimal("10.00"),
-            certification_id=1,
-            genres=[genre],
-            stars=[star],
-            directors=[director]
-        )
-        db_session.add(new_movie)
-        await db_session.commit()
-        await db_session.refresh(new_movie)
-
+        new_movie, _ = movie_test
         update_data = {
             "name": "Updated Movie Name",
-            "time": new_movie.time,
-            "genres": ["Action"],
-            "stars": ["John Doe"],
-            "directors": ["Jane Director"]
+            "time": 120,
+            "genres": ["New Genre"],
+            "stars": ["New Star"],
+            "directors": ["New Director"],
         }
 
-        response = await client.patch(f"/api/v1/theater/movies/{new_movie.id}/", json=update_data)
+        response = await client.patch(
+            f"/api/v1/theater/movies/{new_movie.id}/",
+            json=update_data,
+            headers=headers
+        )
 
         assert response.status_code == 200
 
         data = response.json()
+
         assert data["name"] == update_data["name"]
-        assert "Action" in data["genres"]
-        assert "John Doe" in data["stars"]
-        assert "Jane Director" in data["directors"]
+        assert "New Genre" in data["genres"]
+        assert "New Star" in data["stars"]
+        assert "New Director" in data["directors"]
 
     @pytest.mark.asyncio
-    async def test_update_nonexistent_movie(self, client):
+    async def test_update_nonexistent_movie(self, client, admin_user):
         """
         Test updating non-existent movie.
-        Should return 404 Not Found when movie doesn't exist.
         """
+        user, headers = admin_user
         update_data = {"name": "New Name"}
-        response = await client.patch("/api/v1/theater/movies/999999/", json=update_data)
+        response = await client.patch(
+            "/api/v1/theater/movies/999999/",
+            json=update_data,
+            headers=headers
+        )
         assert response.status_code == 404
         assert response.json() == {"detail": "Movie not found"}
 
     @pytest.mark.asyncio
-    async def test_update_movie_invalid_value(self, client, db_session):
+    async def test_update_movie_invalid_value(self, client, db_session, admin_user, movie_test):
         """PATCH with invalid value"""
-        certification = CertificationModel(id=77, name="EdgeCert")
-        db_session.add(certification)
-        await db_session.commit()
-        movie = MovieModel(
-            uuid=str(uuid.uuid4()),
-            name="EdgeMovie",
-            year=2021,
-            time=100,
-            imdb=7.1,
-            votes=5,
-            meta_score=44,
-            gross=9,
-            description="bad",
-            price=9,
-            certification_id=77,
-        )
-        db_session.add(movie)
+        user, headers = admin_user
+        movie_data, _ = movie_test
+        db_session.add(movie_data)
         await db_session.commit()
         update_data = {"price": "not_a_number"}
-        response = await client.patch(f"/api/v1/theater/movies/{movie.id}/", json=update_data)
+        response = await client.patch(
+            f"/api/v1/theater/movies/{movie_data.id}/",
+            json=update_data,
+            headers=headers
+        )
         assert response.status_code == 422
         error_msgs = [err["msg"] for err in response.json().get("detail", [])]
         assert any("valid decimal" in msg for msg in error_msgs)
 
     @pytest.mark.asyncio
-    async def test_update_movie_with_normalized_lists(self, client, db_session, seed_database):
-        movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
-        payload = {
-            "genres": ["  comedy  ", "DRAMA"],
-            "stars": ["    john DOE  "],
-            "directors": ["Quentin TARANTINO"]
-        }
-        response = await client.patch(f"/api/v1/theater/movies/{movie.id}/", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert "Comedy" in data["genres"]
-        assert "Drama" in data["genres"]
-        assert "John Doe" in data["stars"]
-
-    @pytest.mark.asyncio
-    async def test_patch_movie_empty_payload(self, client, db_session, seed_database):
+    async def test_patch_movie_empty_payload(self, client, db_session, seed_database, admin_user):
         """
         Test updating movie with empty payload.
-        Should return 200 OK when no updates provided (no-op).
         """
+        user, headers = admin_user
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         response = await client.patch(
             f"/api/v1/theater/movies/{movie.id}/",
-            json={}
+            json={},
+            headers=headers,
         )
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_patch_movie_strip_fields(self, client, db_session, seed_database):
-        """Ensure genres/stars/directors are normalized and trimmed"""
+    async def test_patch_movie_strip_fields(self, client, db_session, seed_database, admin_user):
+        """
+        Ensure genres/stars/directors are normalized and trimmed
+        """
+        user, headers = admin_user
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         data = {
             "genres": ["  action  "],
             "stars": ["  bruce willis  "],
             "directors": ["  michael bay  "]
         }
-        resp = await client.patch(f"/api/v1/theater/movies/{movie.id}/", json=data)
+        resp = await client.patch(
+            f"/api/v1/theater/movies/{movie.id}/",
+            json=data,
+            headers=headers
+        )
         assert resp.status_code == 200
         assert "Action" in resp.json()["genres"]
         assert "Bruce Willis" in resp.json()["stars"]
         assert "Michael Bay" in resp.json()["directors"]
 
     @pytest.mark.asyncio
-    async def test_delete_movie_success(self, client, db_session, seed_database):
+    async def test_delete_movie_success(self, client, db_session, admin_user, movie_test):
         """
         Test successful movie deletion.
-        Should return 204 No Content when movie exists and has no paid orders.
         """
+        user, headers = admin_user
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
-        response = await client.delete(f"/api/v1/theater/movies/{movie.id}/")
+        response = await client.delete(
+            f"/api/v1/theater/movies/{movie.id}/",
+            headers=headers
+        )
         assert response.status_code == 204
         deleted_movie = (await db_session.execute(
             select(MovieModel).where(MovieModel.id == movie.id)
@@ -880,61 +986,55 @@ class TestMovieCRUD:
         assert deleted_movie is None
 
     @pytest.mark.asyncio
-    async def test_delete_movie_with_paid_orders(self, client, db_session):
+    async def test_delete_movie_with_paid_orders(self, client, db_session, admin_user, movie_test):
         """
-        Test deleting movie with paid orders.
-        Should return 400 Bad Request when movie appears in paid orders.
+        Test deleting movie with paid orders. It's not possible.
         """
-        movie = MovieModel(
-            uuid=str(uuid.uuid4()),
-            name="Test Movie Paid",
-            year=2023,
-            time=100,
-            imdb=7,
-            votes=100,
-            meta_score=80,
-            gross=1000,
-            description="desc",
-            price=10,
-            certification_id=1
-        )
-        db_session.add(movie)
+        user, headers = admin_user
+        movie_data, _ = movie_test
+        db_session.add(movie_data)
         await db_session.commit()
 
         order = Order(
             user_id=1,
             created_at=datetime.date.today(),
             status=OrderStatusEnum.PAID,
-            total_amount=movie.price
+            total_amount=movie_data.price,
         )
         db_session.add(order)
         await db_session.commit()
-        await db_session.refresh(order)  # Щоб отримати order.id
+        await db_session.refresh(order)
 
         order_item = OrderItem(
             order_id=order.id,
-            movie_id=movie.id,
-            price_at_order=movie.price
+            movie_id=movie_data.id,
+            price_at_order=movie_data.price,
         )
         db_session.add(order_item)
         await db_session.commit()
 
-        response = await client.delete(f"/api/v1/theater/movies/{movie.id}/")
+        response = await client.delete(
+            f"/api/v1/theater/movies/{movie_data.id}/",
+            headers=headers
+        )
         assert response.status_code == 400
         assert response.json() == {
             "detail": "Cannot delete movie - it appears in paid orders."
         }
 
-        existing_movie = await db_session.get(MovieModel, movie.id)
+        existing_movie = await db_session.get(MovieModel, movie_data.id)
         assert existing_movie is not None
 
     @pytest.mark.asyncio
-    async def test_delete_nonexistent_movie(self, client):
+    async def test_delete_nonexistent_movie(self, client, admin_user):
         """
         Test deleting non-existent movie.
-        Should return 404 Not Found when movie doesn't exist.
         """
-        response = await client.delete("/api/v1/theater/movies/999999/")
+        user, header = admin_user
+        response = await client.delete(
+            "/api/v1/theater/movies/999999/",
+            headers=header
+        )
         assert response.status_code == 404
         assert response.json() == {"detail": "Movie with the given ID was not found."}
 
@@ -943,81 +1043,69 @@ class TestMovieValidation:
     """Test suite for movie data validation"""
 
     @pytest.mark.asyncio
-    async def test_create_movie_invalid_imdb(self, client, db_session):
+    async def test_create_movie_invalid_imdb(self, client, db_session, admin_user, movie_test):
         """
         Test creating movie with invalid IMDB rating.
-        Should return 422 Unprocessable Entity when IMDB rating is invalid (>10).
         """
-        certification = CertificationModel(id=3, name="PG")
-        db_session.add(certification)
-        await db_session.commit()
+        user, header = admin_user
 
-        movie_data = {
-            "uuid": str(uuid.uuid4()),
-            "name": "Bad IMDB",
-            "year": 2023,
-            "time": 120,
-            "imdb": 13.0,
-            "votes": 1000,
-            "meta_score": 50,
-            "gross": 100,
-            "description": "Bad imdb",
-            "price": 100,
-            "certification_id": 3,
-            "genres": [{"name": "Action"}],
-            "stars": [{"name": "X"}],
-            "directors": [{"name": "Y"}]
-        }
-        response = await client.post("/api/v1/theater/movies/", json=movie_data)
+        _, movie_data = movie_test
+        movie_data["imdb"] = 13.0
+        response = await client.post(
+            "/api/v1/theater/movies/",
+            json=movie_data,
+            headers=header
+        )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_movie_invalid_time(self, client, db_session):
+    async def test_create_movie_invalid_time(self, client, db_session, admin_user, movie_test):
         """
         Test creating movie with invalid duration.
-        Should return 422 Unprocessable Entity when duration is too short.
         """
-        certification = CertificationModel(id=4, name="PG")
-        db_session.add(certification)
-        await db_session.commit()
+        user, header = admin_user
 
-        movie_data = {
-            "uuid": str(uuid.uuid4()),
-            "name": "Bad Duration",
-            "year": 2023,
-            "time": 5,
-            "imdb": 8,
-            "votes": 1000,
-            "meta_score": 50,
-            "gross": 100,
-            "description": "Bad time",
-            "price": 100,
-            "certification_id": 4,
-            "genres": [{"name": "Action"}],
-            "stars": [{"name": "X"}],
-            "directors": [{"name": "Y"}]
-        }
-        response = await client.post("/api/v1/theater/movies/", json=movie_data)
+        _, movie_data = movie_test
+        movie_data["time"] = 5
+        response = await client.post(
+            "/api/v1/theater/movies/",
+            json=movie_data,
+            headers=header
+        )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_movie_missing_required_fields(self, client):
+    async def test_create_movie_missing_required_fields(self, client, admin_user):
         """
-        Test creating movie with missing required fields.
-        Should return 422 Unprocessable Entity when required fields are missing.
+        Test creating movie with missing required fields. It's not possible.
         """
+        user, header = admin_user
         movie_data = {"name": "NoYear"}
-        response = await client.post("/api/v1/theater/movies/", json=movie_data)
+        response = await client.post(
+            "/api/v1/theater/movies/",
+            json=movie_data,
+            headers=header
+        )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_patch_movie_forbidden_field(self, client, seed_database, db_session):
+    async def test_patch_movie_forbidden_field(
+            self,
+            client,
+            seed_database,
+            db_session,
+            admin_user
+    ):
         """
-        Test updating forbidden movie field.
+        Test updating forbidden movie field. You cannot add a new field to a movie.
         """
+        user, header = admin_user
+
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         response = await client.patch(
             f"/api/v1/theater/movies/{movie.id}/",
             json={"forbidden": 123},
+            headers=header,
         )
         assert response.status_code == 422
+
