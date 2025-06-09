@@ -28,14 +28,16 @@ router = APIRouter()
     response_model=OrderResponse,
     status_code=201,
     summary="Create order from cart",
-    description="Create an order based on the current user's cart. Optionally specify a movie_id to order only that movie.",
+    description="Create an order based on the current user's cart."
+                " Optionally specify a movie_id to order only that movie.",
     responses={
         201: {"description": "Order created successfully."},
         400: {"description": "Cart is empty or contains unavailable movies."},
     },
 )
 async def create_order_from_cart(
-    movie_id: Optional[int] = Query(None, description="ID of the movie to order from the cart. If not provided, all movies from the cart will be ordered."),
+    movie_id: Optional[int] = Query(None, description="ID of the movie to order from the cart."
+                                                      " If not provided, all movies from the cart will be ordered."),
     current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrderResponse:

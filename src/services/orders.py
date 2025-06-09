@@ -26,7 +26,6 @@ class OrderService:
         if not cart or not cart.items:
             raise ValueError("Cart is empty.")
 
-        # Фільтруємо елементи кошика за movie_id (якщо він заданий)
         if movie_id is not None:
             filtered_items = [item for item in cart.items if item.movie_id == movie_id]
             if not filtered_items:
@@ -51,7 +50,6 @@ class OrderService:
         )
         self.session.add(order)
 
-        # Видаляємо з кошика тільки ті елементи, які замовляємо
         for item in filtered_items:
             await self.session.delete(item)
 
