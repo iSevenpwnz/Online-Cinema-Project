@@ -11,10 +11,16 @@ on:
       - develop
       - cd-setting
 
+# Запобігаємо одночасним деплоям
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Repository
@@ -48,7 +54,15 @@ jobs:
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Execute Deployment Script on EC2
+        timeout-minutes: 25
         run: |
           echo "Deploying branch: ${{ steps.branch.outputs.branch }}"
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-                'bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh ${{ steps.branch.outputs.branch }}'
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=60 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                'timeout 1200 bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh ${{ steps.branch.outputs.branch }}'
+
+      - name: Verify Deployment
+        if: always()
+        run: |
+          echo "Verifying deployment status..."
+          ssh -o ConnectTimeout=30 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                'cd /home/ubuntu/src/online-cinema-project && bash commands/check-status.sh'

@@ -6,8 +6,55 @@ set -e
 # Function to handle errors with custom messages
 handle_error() {
     echo "Error: $1"
+    cleanup
     exit 1
 }
+
+# Cleanup function
+cleanup() {
+    echo "Cleaning up..."
+    rm -f "$LOCK_FILE"
+}
+
+# Trap to ensure cleanup on exit
+trap cleanup EXIT
+
+# Deployment lock to prevent concurrent deployments
+LOCK_FILE="/tmp/cinema-deploy.lock"
+LOCK_TIMEOUT=300  # 5 minutes
+
+echo "=== Online Cinema Deployment Started ==="
+echo "Timestamp: $(date)"
+
+# Check for existing deployment
+if [ -f "$LOCK_FILE" ]; then
+    LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+    echo "Lock file exists (PID: $LOCK_PID). Checking if process is still running..."
+    
+    if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "Another deployment is already in progress (PID: $LOCK_PID)"
+        echo "Waiting for it to complete (timeout: ${LOCK_TIMEOUT}s)..."
+        
+        WAIT_TIME=0
+        while [ -f "$LOCK_FILE" ] && [ $WAIT_TIME -lt $LOCK_TIMEOUT ]; do
+            sleep 10
+            WAIT_TIME=$((WAIT_TIME + 10))
+            echo "Waiting... ${WAIT_TIME}s/${LOCK_TIMEOUT}s"
+        done
+        
+        if [ -f "$LOCK_FILE" ]; then
+            echo "Timeout waiting for previous deployment. Removing stale lock."
+            rm -f "$LOCK_FILE"
+        fi
+    else
+        echo "Lock file exists but process is not running. Removing stale lock."
+        rm -f "$LOCK_FILE"
+    fi
+fi
+
+# Create deployment lock
+echo $$ > "$LOCK_FILE"
+echo "Deployment lock created (PID: $$)"
 
 # Get the target branch from the first argument, default to 'develop' if not provided
 TARGET_BRANCH=${1:-develop}
@@ -55,9 +102,44 @@ if [ ! -f "docker-compose-prod.yml" ]; then
     handle_error "docker-compose-prod.yml file not found"
 fi
 
-# Build and run Docker containers with Docker Compose v2
+# Stop existing containers gracefully
+echo "Stopping existing containers..."
+docker compose -f docker-compose-prod.yml down --timeout 30 || echo "No containers to stop or some containers failed to stop"
+
+# Clean up unused Docker resources to free space
+echo "Cleaning up Docker resources..."
+docker system prune -f --volumes || echo "Docker cleanup completed with warnings"
+
+# Build and run Docker containers with optimizations
 echo "Building and starting Docker containers..."
-docker compose -f docker-compose-prod.yml up -d --build || handle_error "Failed to build and run Docker containers using docker-compose-prod.yml."
+echo "This may take several minutes..."
+
+# Build with no cache for clean deployment and parallel builds
+DOCKER_BUILDKIT=1 docker compose -f docker-compose-prod.yml build --no-cache --parallel || handle_error "Failed to build Docker containers"
+
+# Start containers with timeout
+timeout 600 docker compose -f docker-compose-prod.yml up -d || handle_error "Failed to start Docker containers (timeout: 10 minutes)"
+
+# Wait for containers to be healthy
+echo "Waiting for containers to be ready..."
+sleep 10
+
+# Check if containers are running
+echo "Checking container status..."
+docker compose -f docker-compose-prod.yml ps
+
+# Verify main application is responding (if health check exists)
+echo "Verifying deployment..."
+MAIN_CONTAINER=$(docker compose -f docker-compose-prod.yml ps --services | head -1)
+if [ -n "$MAIN_CONTAINER" ]; then
+    echo "Main container: $MAIN_CONTAINER"
+    docker compose -f docker-compose-prod.yml logs --tail 20 "$MAIN_CONTAINER" || echo "Could not fetch logs"
+fi
 
 # Print a success message upon successful deployment
-echo "Deployment of branch '$TARGET_BRANCH' completed successfully."
+echo "=== Deployment Summary ==="
+echo "Branch: $TARGET_BRANCH"
+echo "Completed at: $(date)"
+echo "Running containers:"
+docker compose -f docker-compose-prod.yml ps --format "table {{.Service}}\t{{.Status}}\t{{.Ports}}"
+echo "=== Deployment of branch '$TARGET_BRANCH' completed successfully! ==="
