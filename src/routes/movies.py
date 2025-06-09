@@ -75,7 +75,7 @@ async def get_movie_list(
     ),
     sort_by: Optional[str] = Query(
         "id",
-        description="Sort movies by a field. Options: 'price', 'year', 'imdb'. Default is 'price'."
+        description="Sort movies by a field. Options: 'price', 'year', 'imdb'. Default is 'id'."
     ),
     filter_by: Optional[str] = Query(
         None,
