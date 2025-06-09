@@ -100,12 +100,6 @@ async def get_order_by_id(
     "/{order_id}/status",
     response_model=OrderResponse,
     summary="Change order status",
-    description="Change the status of an order for the current user.",
-)
-@router.patch(
-    "/{order_id}/status",
-    response_model=OrderResponse,
-    summary="Change order status",
     description="Change the status of an order. Admins can change to any status. Users can only cancel their orders.",
 )
 async def change_order_status(
