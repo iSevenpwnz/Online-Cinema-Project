@@ -53,7 +53,7 @@ class ShoppingCartService:
         """Remove movie from user's cart."""
         cart = await self.get_or_create_cart(user)
         await validate_cart_ownership(self.session, cart.id, user.id)
-        
+
         query = select(CartItem).where(
             CartItem.cart_id == cart.id, CartItem.movie_id == movie_id
         )
@@ -68,7 +68,7 @@ class ShoppingCartService:
         """Clear user's cart."""
         cart = await self.get_or_create_cart(user)
         await validate_cart_ownership(self.session, cart.id, user.id)
-        
+
         query = select(CartItem).where(CartItem.cart_id == cart.id)
         result = await self.session.execute(query)
         items = result.scalars().all()
@@ -82,7 +82,7 @@ class ShoppingCartService:
         """Get user's cart with all items."""
         cart = await self.get_or_create_cart(user)
         await validate_cart_ownership(self.session, cart.id, user.id)
-        
+
         # Eagerly load items and their related movie data
         query = (
             select(Cart)
