@@ -1,9 +1,12 @@
+from decimal import Decimal
 from notifications import EmailSenderInterface
 
 
 class StubEmailSender(EmailSenderInterface):
 
-    async def send_activation_email(self, email: str, activation_link: str) -> None:
+    async def send_activation_email(
+        self, email: str, activation_link: str
+    ) -> None:
         """
         Stub implementation for sending an activation email.
 
@@ -13,7 +16,9 @@ class StubEmailSender(EmailSenderInterface):
         """
         return None
 
-    async def send_activation_complete_email(self, email: str, login_link: str) -> None:
+    async def send_activation_complete_email(
+        self, email: str, login_link: str
+    ) -> None:
         """
         Stub implementation for sending an account activation complete email.
 
@@ -23,7 +28,9 @@ class StubEmailSender(EmailSenderInterface):
         """
         return None
 
-    async def send_password_reset_email(self, email: str, reset_link: str) -> None:
+    async def send_password_reset_email(
+        self, email: str, reset_link: str
+    ) -> None:
         """
         Stub implementation for sending a password reset email.
 
@@ -33,7 +40,9 @@ class StubEmailSender(EmailSenderInterface):
         """
         return None
 
-    async def send_password_reset_complete_email(self, email: str, login_link: str) -> None:
+    async def send_password_reset_complete_email(
+        self, email: str, login_link: str
+    ) -> None:
         """
         Stub implementation for sending a password reset complete email.
 
@@ -41,4 +50,15 @@ class StubEmailSender(EmailSenderInterface):
             email (str): The recipient's email address.
             login_link (str): The login link to include in the email.
         """
+        return None
+
+    async def send_success_payment_email(
+        self,
+        email: str,
+        user_name: str,
+        order_id: int,
+        order_items: list,
+        total_amount: Decimal,
+    ):
+        print("EMAIL STUB send_success_payment_email")
         return None
