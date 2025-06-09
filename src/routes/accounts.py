@@ -502,14 +502,13 @@ async def reset_password(
     if token_record_query_result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token.",  # Повідомлення для відсутнього токена
+            detail="Invalid email or token.",
         )
 
     token_record: PasswordResetTokenModel = cast(
         PasswordResetTokenModel, token_record_query_result
     )
 
-    # Перевірка, чи токен не співпадає
     if token_record.token != data.token:
         await db.delete(token_record)
         await db.commit()
@@ -518,29 +517,14 @@ async def reset_password(
             detail="Invalid email or token.",
         )
 
-    # Перевірка прострочення токена
-    # .replace(tzinfo=timezone.utc) потрібне, якщо expires_at з бази даних "наївний"
-    # Якщо expires_at вже aware (з tzinfo), то .replace() може бути непотрібним або навіть шкідливим.
-    # Припускаємо, що він "наївний" або ми хочемо гарантувати UTC.
-    # Моделі TokenBaseModel зберігають expires_at з timezone=True, тому він повинен бути aware.
-    # Однак, явне .replace(tzinfo=timezone.utc) не зашкодить, якщо він вже UTC.
-    # Якщо він інший timezone, це переведе його в UTC, що може бути не те, що потрібно.
-    # Краще було б token_record.expires_at < datetime.now(timezone.utc)
-    # Але для узгодження з попереднім кодом, залишимо .replace, якщо expires_at може бути наївним.
-    # Враховуючи, що TokenBaseModel використовує DateTime(timezone=True), expires_at має бути aware.
-    # Тому .replace(tzinfo=timezone.utc) може бути зайвим.
-    # Давайте спробуємо без нього, якщо expires_at вже UTC.
-    # Перевірка прострочення токена
     current_time_utc = datetime.now(timezone.utc)
     token_expires_at = token_record.expires_at
 
-    # Переконуємося, що token_expires_at є offset-aware (UTC)
     if (
         token_expires_at.tzinfo is None
         or token_expires_at.tzinfo.utcoffset(token_expires_at) is None
     ):
-        # Якщо expires_at з бази даних "наївний" або tzinfo не встановлено належним чином,
-        # припускаємо, що це UTC, і робимо його aware.
+
         token_expires_at = token_expires_at.replace(tzinfo=timezone.utc)
 
     if token_expires_at < current_time_utc:
@@ -548,7 +532,7 @@ async def reset_password(
         await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token.",  # Залишаємо повідомлення, яке очікує тест
+            detail="Invalid email or token.",
         )
 
     try:
