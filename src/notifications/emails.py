@@ -1,3 +1,4 @@
+from decimal import Decimal
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -23,6 +24,7 @@ class EmailSender(EmailSenderInterface):
         activation_complete_email_template_name: str,
         password_email_template_name: str,
         password_complete_email_template_name: str,
+        success_payment_email_template_name: str,
     ):
         self._hostname = hostname
         self._port = port
@@ -30,9 +32,16 @@ class EmailSender(EmailSenderInterface):
         self._password = password
         self._use_tls = use_tls
         self._activation_email_template_name = activation_email_template_name
-        self._activation_complete_email_template_name = activation_complete_email_template_name
+        self._activation_complete_email_template_name = (
+            activation_complete_email_template_name
+        )
         self._password_email_template_name = password_email_template_name
-        self._password_complete_email_template_name = password_complete_email_template_name
+        self._password_complete_email_template_name = (
+            password_complete_email_template_name
+        )
+        self._success_payment_email_template_name = (
+            success_payment_email_template_name
+        )
 
         self._env = Environment(loader=FileSystemLoader(template_dir))
 
@@ -64,9 +73,13 @@ class EmailSender(EmailSenderInterface):
             await smtp.quit()
         except aiosmtplib.SMTPException as error:
             logging.error(f"Failed to send email to {recipient}: {error}")
-            raise BaseEmailError(f"Failed to send email to {recipient}: {error}")
+            raise BaseEmailError(
+                f"Failed to send email to {recipient}: {error}"
+            )
 
-    async def send_activation_email(self, email: str, activation_link: str) -> None:
+    async def send_activation_email(
+        self, email: str, activation_link: str
+    ) -> None:
         """
         Send an account activation email asynchronously.
 
@@ -75,11 +88,15 @@ class EmailSender(EmailSenderInterface):
             activation_link (str): The activation link to be included in the email.
         """
         template = self._env.get_template(self._activation_email_template_name)
-        html_content = template.render(email=email, activation_link=activation_link)
+        html_content = template.render(
+            email=email, activation_link=activation_link
+        )
         subject = "Account Activation"
         await self._send_email(email, subject, html_content)
 
-    async def send_activation_complete_email(self, email: str, login_link: str) -> None:
+    async def send_activation_complete_email(
+        self, email: str, login_link: str
+    ) -> None:
         """
         Send an account activation completion email asynchronously.
 
@@ -87,12 +104,16 @@ class EmailSender(EmailSenderInterface):
             email (str): The recipient's email address.
             login_link (str): The login link to be included in the email.
         """
-        template = self._env.get_template(self._activation_complete_email_template_name)
+        template = self._env.get_template(
+            self._activation_complete_email_template_name
+        )
         html_content = template.render(email=email, login_link=login_link)
         subject = "Account Activated Successfully"
         await self._send_email(email, subject, html_content)
 
-    async def send_password_reset_email(self, email: str, reset_link: str) -> None:
+    async def send_password_reset_email(
+        self, email: str, reset_link: str
+    ) -> None:
         """
         Send a password reset request email asynchronously.
 
@@ -105,7 +126,9 @@ class EmailSender(EmailSenderInterface):
         subject = "Password Reset Request"
         await self._send_email(email, subject, html_content)
 
-    async def send_password_reset_complete_email(self, email: str, login_link: str) -> None:
+    async def send_password_reset_complete_email(
+        self, email: str, login_link: str
+    ) -> None:
         """
         Send a password reset completion email asynchronously.
 
@@ -113,7 +136,29 @@ class EmailSender(EmailSenderInterface):
             email (str): The recipient's email address.
             login_link (str): The login link to be included in the email.
         """
-        template = self._env.get_template(self._password_complete_email_template_name)
+        template = self._env.get_template(
+            self._password_complete_email_template_name
+        )
         html_content = template.render(email=email, login_link=login_link)
         subject = "Your Password Has Been Successfully Reset"
+        await self._send_email(email, subject, html_content)
+
+    async def send_success_payment_email(
+        self,
+        email: str,
+        user_name: str,
+        order_id: int,
+        order_items: list,
+        total_amount: Decimal,
+    ):
+        template = self._env.get_template(
+            self._success_payment_email_template_name
+        )
+        html_content = template.render(
+            user_name=user_name,
+            order_id=order_id,
+            order_items=order_items,
+            total_amount=total_amount,
+        )
+        subject = "Payment Successful"
         await self._send_email(email, subject, html_content)
