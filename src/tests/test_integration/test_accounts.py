@@ -1,18 +1,21 @@
 from datetime import datetime, timezone, timedelta
+from typing import Any
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import select, delete, func
+from httpx import AsyncClient
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from database import (
-    UserModel,
     ActivationTokenModel,
     PasswordResetTokenModel,
-    UserGroupModel,
-    UserGroupEnum,
     RefreshTokenModel,
+    UserGroupEnum,
+    UserGroupModel,
+    UserModel,
 )
 
 
@@ -1550,3 +1553,128 @@ async def test_regenerate_activation_link_no_token(
         .first()
     )
     assert new_token is not None
+
+
+@pytest.mark.asyncio
+async def test_logout_success(
+    client: AsyncClient, db_session: AsyncSession, seed_user_groups: Any
+):
+    # Register and login user
+    email = "logoutuser@example.com"
+    payload = {
+        "email": email,
+        "password": "StrongPassword123!",
+    }
+    await client.post("/api/v1/accounts/register/", json=payload)
+
+    user = await db_session.scalar(
+        select(UserModel).where(UserModel.email == email)
+    )
+
+    if user is None:
+        raise ValueError(
+            "User was not created in the database after registration."
+        )
+
+    user.is_active = True
+    await db_session.commit()
+
+    login_resp = await client.post("/api/v1/accounts/login/", json=payload)
+    assert login_resp.status_code == 201
+    tokens = login_resp.json()
+    refresh_token = tokens["refresh_token"]
+    # Logout
+    resp = await client.post(
+        "/api/v1/accounts/logout/",
+        json={"refresh_token": refresh_token},
+        headers={"Authorization": f"Bearer {tokens['access_token']}"},
+    )
+    assert resp.status_code == 200
+    assert "message" in resp.json()
+    # Token should be removed from DB
+    from database import RefreshTokenModel
+
+    token_obj = (
+        (
+            await db_session.execute(
+                select(RefreshTokenModel).where(
+                    RefreshTokenModel.token == refresh_token
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+    assert token_obj is None
+
+
+@pytest.mark.asyncio
+async def test_logout_invalid_token(
+    client: AsyncClient, db_session: AsyncSession, seed_user_groups: Any
+):
+    email = "logoutuser@example.com"
+    payload = {
+        "email": email,
+        "password": "StrongPassword123!",
+    }
+    await client.post("/api/v1/accounts/register/", json=payload)
+
+    user = await db_session.scalar(
+        select(UserModel).where(UserModel.email == email)
+    )
+
+    if user is None:
+        raise ValueError(
+            "User was not created in the database after registration."
+        )
+
+    user.is_active = True
+    await db_session.commit()
+
+    login_resp = await client.post("/api/v1/accounts/login/", json=payload)
+    assert login_resp.status_code == 201
+    tokens = login_resp.json()
+    # Try to logout with a non-existent token
+    resp = await client.post(
+        "/api/v1/accounts/logout/",
+        json={"refresh_token": "invalidtoken"},
+        headers={"Authorization": f"Bearer {tokens['access_token']}"},
+    )
+    assert resp.status_code == 404
+    assert "not found" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_logout_missing_token(
+    client: AsyncClient, db_session: AsyncSession, seed_user_groups: Any
+):
+    email = "logoutuser@example.com"
+    payload = {
+        "email": email,
+        "password": "StrongPassword123!",
+    }
+    await client.post("/api/v1/accounts/register/", json=payload)
+
+    user = await db_session.scalar(
+        select(UserModel).where(UserModel.email == email)
+    )
+
+    if user is None:
+        raise ValueError(
+            "User was not created in the database after registration."
+        )
+
+    user.is_active = True
+    await db_session.commit()
+
+    login_resp = await client.post("/api/v1/accounts/login/", json=payload)
+    assert login_resp.status_code == 201
+    tokens = login_resp.json()
+    # Try to logout with missing token
+    resp = await client.post(
+        "/api/v1/accounts/logout/",
+        json={},
+        headers={"Authorization": f"Bearer {tokens['access_token']}"},
+    )
+    assert resp.status_code == 422
+    assert "refresh_token" in resp.text

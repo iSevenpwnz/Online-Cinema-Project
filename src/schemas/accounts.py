@@ -66,6 +66,10 @@ class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
 
 
+class LogoutRequestSchema(TokenRefreshRequestSchema):
+    pass
+
+
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"

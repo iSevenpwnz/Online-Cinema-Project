@@ -39,8 +39,9 @@ from schemas import (
 from schemas.accounts import (
     ChangePasswordRequestSchema,
     GenerateActivationLinkRequestSchema,
+    LogoutRequestSchema,
 )
-from security.http import get_current_user
+from security.http import get_current_user, get_current_user_if_active
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -502,14 +503,13 @@ async def reset_password(
     if token_record_query_result is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token.",  # Повідомлення для відсутнього токена
+            detail="Invalid email or token.",
         )
 
     token_record: PasswordResetTokenModel = cast(
         PasswordResetTokenModel, token_record_query_result
     )
 
-    # Перевірка, чи токен не співпадає
     if token_record.token != data.token:
         await db.delete(token_record)
         await db.commit()
@@ -518,29 +518,14 @@ async def reset_password(
             detail="Invalid email or token.",
         )
 
-    # Перевірка прострочення токена
-    # .replace(tzinfo=timezone.utc) потрібне, якщо expires_at з бази даних "наївний"
-    # Якщо expires_at вже aware (з tzinfo), то .replace() може бути непотрібним або навіть шкідливим.
-    # Припускаємо, що він "наївний" або ми хочемо гарантувати UTC.
-    # Моделі TokenBaseModel зберігають expires_at з timezone=True, тому він повинен бути aware.
-    # Однак, явне .replace(tzinfo=timezone.utc) не зашкодить, якщо він вже UTC.
-    # Якщо він інший timezone, це переведе його в UTC, що може бути не те, що потрібно.
-    # Краще було б token_record.expires_at < datetime.now(timezone.utc)
-    # Але для узгодження з попереднім кодом, залишимо .replace, якщо expires_at може бути наївним.
-    # Враховуючи, що TokenBaseModel використовує DateTime(timezone=True), expires_at має бути aware.
-    # Тому .replace(tzinfo=timezone.utc) може бути зайвим.
-    # Давайте спробуємо без нього, якщо expires_at вже UTC.
-    # Перевірка прострочення токена
     current_time_utc = datetime.now(timezone.utc)
     token_expires_at = token_record.expires_at
 
-    # Переконуємося, що token_expires_at є offset-aware (UTC)
     if (
         token_expires_at.tzinfo is None
         or token_expires_at.tzinfo.utcoffset(token_expires_at) is None
     ):
-        # Якщо expires_at з бази даних "наївний" або tzinfo не встановлено належним чином,
-        # припускаємо, що це UTC, і робимо його aware.
+
         token_expires_at = token_expires_at.replace(tzinfo=timezone.utc)
 
     if token_expires_at < current_time_utc:
@@ -548,7 +533,7 @@ async def reset_password(
         await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token.",  # Залишаємо повідомлення, яке очікує тест
+            detail="Invalid email or token.",
         )
 
     try:
@@ -848,3 +833,93 @@ async def refresh_access_token(
     new_access_token = jwt_manager.create_access_token({"user_id": user_id})
 
     return TokenRefreshResponseSchema(access_token=new_access_token)
+
+
+@router.post(
+    "/logout/",
+    summary="Logout User",
+    description="Invalidate a user's refresh token, effectively logging them out.",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {
+            "description": "Not Found - Refresh token not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Refresh token not found."}
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred while logging out.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred while logging out."
+                    }
+                }
+            },
+        },
+    },
+    openapi_extra={
+        "requestBody": {
+            "description": "The refresh token to be invalidated for logout.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    }
+                }
+            }
+        }
+    },
+)
+async def logout(
+    token_data: LogoutRequestSchema,
+    user: UserModel = Depends(get_current_user_if_active),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponseSchema:
+    """
+    Invalidate a user's refresh token, logging them out.
+
+    Args:
+        token_data (LogoutRequestSchema): Contains the refresh token to be invalidated.
+        user (UserModel): The currently authenticated and active user.
+        db (AsyncSession): The asynchronous database session.
+
+    Returns:
+        MessageResponseSchema: A message indicating successful logout.
+
+    Raises:
+        HTTPException:
+            - 404 Not Found if the refresh token is not found.
+            - 500 Internal Server Error if an error occurs during logout.
+    """
+    try:
+        refresh_token = await db.scalar(
+            select(RefreshTokenModel).where(
+                RefreshTokenModel.token == token_data.refresh_token,
+                RefreshTokenModel.user_id == user.id,
+            )
+        )
+
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Refresh token not found.",
+            )
+
+        await db.execute(
+            delete(RefreshTokenModel).where(
+                RefreshTokenModel.id == refresh_token.id
+            )
+        )
+
+        await db.commit()
+
+        return MessageResponseSchema(message="Successfully logged out.")
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while logging out.",
+        ) from e

@@ -1,17 +1,19 @@
 import datetime
-import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import Request
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from database.models.orders import Order, OrderStatusEnum, OrderItem
 from database.models.payments import PaymentModel, PaymentStatusEnum
 from database.models.movies import MovieModel
 from database.models.accounts import UserModel
 from services.payments.payments import PaymentService, PaymentServicesEnum
 from typing import Any, Tuple
+
+from tests.doubles.stubs.emails import StubEmailSender
 
 
 class MockStripePaymentService(PaymentService):
@@ -398,3 +400,79 @@ async def test_stripe_webhook_charge_refunded(
     # Check payment status updated
     await db_session.refresh(payment)
     assert payment.status == PaymentStatusEnum.REFUNDED
+
+
+@pytest.mark.asyncio
+@patch("stripe.Webhook.construct_event")
+@patch("stripe.checkout.Session.list_line_items")
+@patch("stripe.Product.retrieve")
+async def test_email_sent_on_payment_success(
+    mock_product_retrieve: MagicMock,
+    mock_list_line_items: MagicMock,
+    mock_construct_event: MagicMock,
+    seed_user_groups: Any,
+    client: AsyncClient,
+    db_session: AsyncSession,
+    payment_test_order_item: Tuple[Order, OrderItem],
+    seed_active_user: UserModel,
+):
+    order, order_item = payment_test_order_item
+    # Prepare mocks
+    mock_construct_event.return_value = make_stripe_checkout_completed_event(
+        order.id
+    )
+    mock_list_line_items.return_value = [
+        {"price": {"product": "prod_test", "unit_amount": 999}},
+    ]
+    mock_product_retrieve.return_value = {
+        "metadata": {"order_item_id": str(order_item.id)}
+    }
+
+    payload = b"{}"
+    sig_header = "test_sig"
+    headers = {"stripe-signature": sig_header}
+    with patch.object(
+        StubEmailSender, "send_success_payment_email", new_callable=AsyncMock
+    ) as mock_send_email:
+        resp = await client.post(
+            "/api/v1/payments/stripe/webhook",
+            content=payload,
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "OK"
+        # Check payment created in DB
+        payment = await db_session.scalar(
+            select(PaymentModel)
+            .where(PaymentModel.order_id == order.id)
+            .options(
+                joinedload(PaymentModel.user).joinedload(UserModel.profile),
+                joinedload(PaymentModel.order)
+                .selectinload(Order.order_items)
+                .selectinload(OrderItem.movie),
+            )
+        )
+        assert payment is not None
+        assert payment.status == PaymentStatusEnum.SUCCESSFUL
+        # Check email was sent
+        assert mock_send_email.await_count == 1
+        # Check call args robustly
+
+        call_obj = mock_send_email.await_args_list[0]
+        kwargs = call_obj.kwargs
+
+        # Now you can access each parameter:
+        email = kwargs["email"]
+        order_id = kwargs["order_id"]
+        order_items = kwargs["order_items"]
+        total_amount = kwargs["total_amount"]
+        user_name = kwargs["user_name"]
+
+        assert email == payment.user.email
+        assert order_id == payment.order.id
+        assert all(
+            order_item.id == payment.order.order_items[index].id
+            for index, order_item in enumerate(order_items)
+        )
+        assert total_amount == payment.order.total_amount
+        assert user_name == payment.user.email

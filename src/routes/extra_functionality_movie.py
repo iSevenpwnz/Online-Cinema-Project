@@ -7,9 +7,8 @@ from database.models.movies import MovieModel, GenreModel
 from schemas import (
     LikeDislikeSchema,
     MovieRatingSchema,
-    MovieListResponseSchema,
-    MovieListItemSchema,
 )
+from schemas.movies import MovieListResponseSchema, MovieListItemSchema
 from schemas.extra_functionality_movie import (
     MessageResponse,
     AverageRatingResponse,
@@ -408,8 +407,8 @@ async def get_user_favorites(
             name=movie.name,
             year=movie.year,
             imdb=movie.imdb,
-            price=float(movie.price),
-            description=movie.description,
+            price=movie.price,
+            genres=[g.name for g in movie.genres],
         )
         for movie in movies
     ]

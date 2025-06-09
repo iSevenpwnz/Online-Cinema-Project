@@ -1,0 +1,35 @@
+<html lang="en">
+<head>
+  <title>Payment Successful</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, sans-serif;">
+<div style="border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 20px; max-width: 480px; margin: 40px auto; background-color: #ffffff; color: #333333;">
+  <h2 style="color: #4CAF50; text-align: center; margin: 0 0 20px; font-size: 24px; font-weight: bold;">
+    Payment Successful
+  </h2>
+  <p style="margin: 10px 0; line-height: 1.6; font-size: 16px;">
+    Dear {{ user_name }},
+  </p>
+  <p style="margin: 10px 0; line-height: 1.6; font-size: 16px;">
+    Thank you for your purchase! Your payment for order <strong>#{{ order_id }}</strong> was successful.
+  </p>
+  <p style="margin: 10px 0; line-height: 1.6; font-size: 16px;">
+    <strong>Order Details:</strong><br>
+    {% for item in order_items %}
+      - {{ item.movie.name }} ({{ item.price_at_order }} USD)<br>
+    {% endfor %}
+    <br>
+    <strong>Total Paid:</strong> {{ total_amount }} USD
+  </p>
+  <p style="margin: 10px 0; line-height: 1.6; font-size: 16px;">
+    You can now access your purchased content in your account.
+  </p>
+  <p style="margin: 20px 0 10px; line-height: 1.6; font-size: 16px;">
+    Regards,
+  </p>
+  <p style="margin: 0; font-style: italic; font-size: 16px; color: #4CAF50;">
+    The Mate team
+  </p>
+</div>
+</body>
+</html>

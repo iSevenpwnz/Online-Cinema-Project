@@ -1,19 +1,33 @@
+import datetime
 from typing import cast
-from fastapi import APIRouter, Depends, HTTPException, Request, routing, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
-from config.dependencies import get_settings
+from config.dependencies import get_accounts_email_notificator, get_settings
 from config.settings import BaseAppSettings
-from database.models.accounts import UserModel
+from database.models.accounts import UserGroupEnum, UserModel
 from database.models.orders import Order, OrderStatusEnum, OrderItem
+from database.models.payments import PaymentModel, PaymentStatusEnum
+from database.pagination.custom_pagination import CustomPage, CustomParams
+from notifications.interfaces import EmailSenderInterface
 from schemas.payments import (
     CreatePaymentSessionRequestSchema,
     CreatePaymentSessionResponseSchema,
+    PaymentModelSchema,
+    RetrievePaymentsRequestSchema,
 )
-from security.http import get_current_user
+from security.http import get_current_user, get_current_user_if_active
 from services.payments.payments import (
     StripePaymentService,
     get_payment_service,
@@ -23,6 +37,7 @@ from services.payments.payments import (
 from database import (
     get_db,
 )
+from services.payments.payments_crud import fetch_payments
 
 router = APIRouter()
 
@@ -80,11 +95,93 @@ async def handle_stripe_webhook_event(
     request: Request,
     settings: BaseAppSettings = Depends(get_settings),
     db: AsyncSession = Depends(get_db),
+    email_sender: EmailSenderInterface = Depends(
+        get_accounts_email_notificator
+    ),
 ):
     stripe_service = StripePaymentService(settings, None)
 
-    await stripe_service.handle_event(request, db)
+    payment = await stripe_service.handle_event(request, db)
+
+    if payment and payment.status == PaymentStatusEnum.SUCCESSFUL:
+        payment_populated = await db.scalar(
+            select(PaymentModel)
+            .where(PaymentModel.id == payment.id)
+            .options(
+                joinedload(PaymentModel.user).joinedload(UserModel.profile),
+                joinedload(PaymentModel.order)
+                .selectinload(Order.order_items)
+                .selectinload(OrderItem.movie),
+            )
+        )
+
+        if not payment_populated:
+            raise ValueError("Can't retrieve payment instances")
+
+        user_name = (
+            " ".join(
+                [
+                    str(payment_populated.user.profile.first_name),
+                    str(payment_populated.user.profile.last_name),
+                ]
+            )
+            if payment_populated.user.profile
+            else payment_populated.user.email
+        )
+
+        print("run send_success_payment_email")
+        await email_sender.send_success_payment_email(
+            email=payment_populated.user.email,
+            order_id=payment_populated.order.id,
+            order_items=payment_populated.order.order_items,
+            total_amount=payment_populated.order.total_amount,  # type: ignore
+            user_name=user_name,
+        )
+        print("after run send_success_payment_email")
 
     await db.commit()
 
     return {"message": "OK"}
+
+
+def get_filters(
+    user_id: int | None = Query(default=None),
+    from_date: datetime.date | None = Query(default=None),
+    to_date: datetime.date | None = Query(default=None),
+    status: PaymentStatusEnum | None = Query(default=None),
+):
+    return RetrievePaymentsRequestSchema(
+        user_id=user_id,
+        from_date=from_date,
+        to_date=to_date,
+        status=status,
+    )
+
+
+@router.get("/")
+async def get_payments(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    filters: RetrievePaymentsRequestSchema = Depends(get_filters),
+    user: UserModel = Depends(get_current_user_if_active),
+    params: CustomParams = Depends(CustomParams),
+) -> CustomPage[PaymentModelSchema]:
+    if user.has_group(UserGroupEnum.USER):
+        filters.user_id = user.id
+
+    payments = await fetch_payments(
+        filters.user_id,
+        filters.from_date,
+        filters.to_date,
+        filters.status,
+    )
+
+    return await paginate(
+        db,
+        payments,
+        params,
+        additional_data={
+            "path": request.url.path,
+            "query_params": request.query_params,
+        },
+    )

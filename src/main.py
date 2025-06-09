@@ -1,14 +1,18 @@
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from fastapi_pagination import add_pagination
+
 
 from routes import (
     movie_router,
     accounts_router,
     profiles_router,
     payments_router,
+    orders_router,
     shopping_cart_router,
     extra_functionality_movie_router,
+    comments_router,
 )
 
 app = FastAPI(
@@ -45,6 +49,8 @@ app = FastAPI(
 )
 
 api_version_prefix = "/api/v1"
+
+add_pagination(app)
 
 
 # Custom Swagger UI endpoint
@@ -101,11 +107,19 @@ app.include_router(
     movie_router, prefix=f"{api_version_prefix}/theater", tags=["theater"]
 )
 app.include_router(
-    shopping_cart_router, prefix=f"{api_version_prefix}/cart", tags=["cart"]
+    shopping_cart_router, tags=["shopping-cart"]
 )
-app.include_router(payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"])
+app.include_router(
+    payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"]
+)
+app.include_router(
+    orders_router, prefix=f"{api_version_prefix}/orders", tags=["orders"]
+)
 app.include_router(
     extra_functionality_movie_router,
     prefix=f"{api_version_prefix}/extra_functionality",
     tags=["extra_functionality"],
+)
+app.include_router(
+    comments_router, prefix=f"{api_version_prefix}/comments", tags=["comments"]
 )

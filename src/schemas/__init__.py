@@ -1,9 +1,9 @@
 from schemas.movies import (
     MovieDetailSchema,
     MovieListResponseSchema,
-    MovieListItemSchema,
     MovieCreateSchema,
-    MovieUpdateSchema
+    MovieUpdateSchema,
+    MovieListItemSchema
 )
 from schemas.accounts import (
     UserRegistrationRequestSchema,
@@ -21,6 +21,12 @@ from schemas.shopping_cart import (
     CartItemResponse,
     CartResponse
 )
+
+from schemas.orders import (
+    OrderItemResponse,
+    OrderResponse
+)
+
 from schemas.extra_functionality_movie import (
     LikeDislikeSchema,
     FavoriteSchema,
