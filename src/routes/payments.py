@@ -1,5 +1,16 @@
+import datetime
 from typing import cast
-from fastapi import APIRouter, Depends, HTTPException, Request, routing, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    routing,
+    status,
+)
+from fastapi_pagination.ext.sqlalchemy import paginate
+from fastapi_pagination.links import LimitOffsetPage
 from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,13 +18,17 @@ from sqlalchemy.orm import selectinload
 
 from config.dependencies import get_settings
 from config.settings import BaseAppSettings
-from database.models.accounts import UserModel
+from database.models.accounts import UserGroupEnum, UserModel
 from database.models.orders import Order, OrderStatusEnum, OrderItem
+from database.models.payments import PaymentStatusEnum
+from database.pagination.custom_pagination import CustomPage, CustomParams
 from schemas.payments import (
     CreatePaymentSessionRequestSchema,
     CreatePaymentSessionResponseSchema,
+    PaymentModelSchema,
+    RetrievePaymentsRequestSchema,
 )
-from security.http import get_current_user
+from security.http import get_current_user, get_current_user_if_active
 from services.payments.payments import (
     StripePaymentService,
     get_payment_service,
@@ -23,6 +38,7 @@ from services.payments.payments import (
 from database import (
     get_db,
 )
+from services.payments.payments_crud import fetch_payments
 
 router = APIRouter()
 
@@ -88,3 +104,41 @@ async def handle_stripe_webhook_event(
     await db.commit()
 
     return {"message": "OK"}
+
+
+def get_filters(
+    user_id: int | None = Query(default=None),
+    from_date: datetime.date | None = Query(default=None),
+    to_date: datetime.date | None = Query(default=None),
+    status: PaymentStatusEnum | None = Query(default=None),
+):
+    return RetrievePaymentsRequestSchema(
+        user_id=user_id,
+        from_date=from_date,
+        to_date=to_date,
+        status=status,
+    )
+
+
+@router.get("/")
+async def get_payments(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    filters: RetrievePaymentsRequestSchema = Depends(get_filters),
+    user: UserModel = Depends(get_current_user_if_active),
+    params: CustomParams = Depends(CustomParams),
+) -> CustomPage[PaymentModelSchema]:
+    if user.has_group(UserGroupEnum.USER):
+        filters.user_id = user.id
+
+    payments = await fetch_payments(
+        filters.user_id,
+        filters.from_date,
+        filters.to_date,
+        filters.status,
+    )
+
+    return await paginate(db, payments, params, additional_data={
+        "path": request.url.path,
+        "query_params": request.query_params,
+    })
