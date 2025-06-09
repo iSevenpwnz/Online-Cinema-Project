@@ -82,10 +82,10 @@ class ShoppingCartService:
     async def is_movie_in_any_cart(self, movie_id: int) -> bool:
         """
         Check if movie is present in any user's cart.
-        
+
         Args:
             movie_id: ID of the movie to check
-            
+
         Returns:
             bool: True if movie is in any cart, False otherwise
         """

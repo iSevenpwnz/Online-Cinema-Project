@@ -203,12 +203,12 @@ async def check_movie_in_carts(
 ) -> dict:
     """
     Check if movie is present in any user's cart.
-    
+
     Args:
         movie_id: ID of the movie to check
         current_user: The authenticated user making the request
         db: Database session
-        
+
     Returns:
         dict: Contains boolean indicating if movie is in any cart
     """
@@ -217,7 +217,7 @@ async def check_movie_in_carts(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can check movie presence in carts."
         )
-        
+
     service = ShoppingCartService(db)
     is_in_cart = await service.is_movie_in_any_cart(movie_id)
     return {"is_in_cart": is_in_cart}
