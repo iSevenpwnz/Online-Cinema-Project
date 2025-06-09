@@ -79,6 +79,20 @@ class ShoppingCartService:
                 await self.session.delete(item)
             await self.session.commit()
 
+    async def is_movie_in_any_cart(self, movie_id: int) -> bool:
+        """
+        Check if movie is present in any user's cart.
+        
+        Args:
+            movie_id: ID of the movie to check
+            
+        Returns:
+            bool: True if movie is in any cart, False otherwise
+        """
+        query = select(CartItem).where(CartItem.movie_id == movie_id)
+        result = await self.session.execute(query)
+        return result.first() is not None
+
     async def get_cart(self, user: UserModel) -> Cart:
         """Get user's cart with all items."""
         cart = await self.get_or_create_cart(user)

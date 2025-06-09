@@ -6,6 +6,7 @@ from database.models.accounts import UserModel
 from security.http import get_current_user
 from schemas.shopping_cart import CartResponse
 from services.shopping_cart import ShoppingCartService
+from database.models.accounts import UserGroupEnum
 
 router = APIRouter(prefix="/api/v1/shopping-cart", tags=["shopping-cart"])
 
@@ -176,3 +177,47 @@ async def clear_cart(
     await service.clear_cart(current_user)
     cart = await service.get_cart(current_user)
     return CartResponse.from_dict(cart)
+
+
+@router.get(
+    "/check-movie/{movie_id}",
+    summary="Check if movie is in any cart",
+    description=(
+        "<h3>This endpoint checks if a movie is present in any user's cart.</h3>"
+    ),
+    responses={
+        200: {
+            "description": "Movie check completed successfully.",
+            "content": {
+                "application/json": {
+                    "example": {"is_in_cart": True}
+                }
+            },
+        }
+    },
+)
+async def check_movie_in_carts(
+    movie_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Check if movie is present in any user's cart.
+    
+    Args:
+        movie_id: ID of the movie to check
+        current_user: The authenticated user making the request
+        db: Database session
+        
+    Returns:
+        dict: Contains boolean indicating if movie is in any cart
+    """
+    if not current_user.has_group(UserGroupEnum.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can check movie presence in carts."
+        )
+        
+    service = ShoppingCartService(db)
+    is_in_cart = await service.is_movie_in_any_cart(movie_id)
+    return {"is_in_cart": is_in_cart}
