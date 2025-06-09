@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from database import get_db, MovieModel, movie_genres, UserModel
 from database import CertificationModel, GenreModel, StarModel, DirectorModel
 from database.models.orders import Order, OrderItem, OrderStatusEnum
-
+from security.http import require_admin
 
 from schemas.examples.movies import (
     movie_schema_example,
@@ -449,6 +449,7 @@ async def get_movies_by_genre(
 async def create_movie(
         movie_data: MovieCreateSchema,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ) -> MovieDetailSchema:
     """
     Create a new movie. For admin only.
@@ -597,6 +598,7 @@ async def update_movie(
         movie_id: int = Path(..., description="ID of the movie to update", gt=0),
         movie_data: MovieUpdateSchema = Body(...),
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ) -> MovieDetailSchema:
     """
     Update(full and partial) movie details by ID with automatic handling of related entities.
@@ -735,6 +737,7 @@ async def update_movie(
 async def delete_movie(
         movie_id: int,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ):
     """
     Delete a specific movie by its ID if it has no paid orders. For admin only.
@@ -776,6 +779,7 @@ async def delete_movie(
 async def create_genre(
         genre_name: str,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ):
     """
     Create a new genre. For admin only.
@@ -806,6 +810,7 @@ async def update_genre(
         genre_id: int,
         new_name: str,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ):
     """
     Update genre name. For admin only.
@@ -842,6 +847,7 @@ async def update_genre(
 async def delete_genre(
         genre_id: int,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ):
     """
     Delete a genre by ID. For admin only.
@@ -865,6 +871,7 @@ async def delete_genre(
 async def create_star(
         star_name: str,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ):
     """
     Create a new star. For admin only.
@@ -945,6 +952,7 @@ async def update_star(
         star_id: int,
         new_name: str,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ):
     """
     Update star name. For admin only.
@@ -982,6 +990,7 @@ async def update_star(
 async def delete_star(
         star_id: int,
         db: AsyncSession = Depends(get_db),
+        user: UserModel = Depends(require_admin),
 ):
     """
     Delete a star by ID. For admin only.
