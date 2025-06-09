@@ -1,4 +1,4 @@
-# Test deployment workflow for cd-settings branchMore actions
+# Test deployment
 name: Deploy to AWS EC2
 
 on:
