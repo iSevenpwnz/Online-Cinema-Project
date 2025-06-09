@@ -4,10 +4,10 @@ from typing import List, Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-
+from fastapi import HTTPException
 from database.models.shopping_cart import Cart, CartItem
 from database.models.orders import Order, OrderItem, OrderStatusEnum
-from database.models.accounts import UserModel
+from database.models.accounts import UserModel, UserGroupEnum
 
 
 class OrderService:
@@ -99,7 +99,11 @@ class OrderService:
         order = result.scalar_one_or_none()
 
         if not order:
-            raise ValueError("Order not found or access denied.")
+            raise HTTPException(status_code=404, detail="Order not found or access denied.")
+
+        if not user.has_group(UserGroupEnum.ADMIN):
+            if new_status != OrderStatusEnum.CANCELED:
+                raise HTTPException(status_code=403, detail="You can only cancel your order.")
 
         order.status = new_status
         await self.session.commit()
