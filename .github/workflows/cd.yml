@@ -42,7 +42,7 @@ jobs:
 
       - name: Add EC2 Host to known_hosts
         run: |
-          ssh-keyscan -H ec2-63-176-224-34.eu-central-1.compute.amazonaws.com >> ~/.ssh/known_hosts
+          run: ssh-keyscan -H ec2-63-176-224-34.eu-central-1.compute.amazonaws.com >> ~/.ssh/known_hosts || true
 
       - name: Deploy to server
         run: |
