@@ -67,15 +67,15 @@ async def get_user_cart(
 ) -> CartResponse:
     """
     Get any user's shopping cart (admin only).
-    
+
     Args:
         user_id: ID of the user whose cart to retrieve
         current_user: The authenticated user making the request
         db: Database session
-        
+
     Returns:
         CartResponse: The requested user's cart
-        
+
     Raises:
         HTTPException: If not authorized or user not found
     """
@@ -125,8 +125,8 @@ async def add_movie_to_cart(
         cart = await service.get_cart(current_user)
         return CartResponse.from_dict(cart)
     except ValueError as e:
-        status = 404 if "not found" in str(e).lower() else 400
-        raise HTTPException(status_code=status, detail=str(e))
+        status_code = status.HTTP_404_NOT_FOUND if "not found" in str(e).lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=str(e))
 
 
 @router.delete(

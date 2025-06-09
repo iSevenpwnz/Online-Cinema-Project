@@ -99,14 +99,14 @@ class ShoppingCartService:
     async def get_user_cart(self, admin: UserModel, user_id: int) -> Cart:
         """
         Get any user's cart (admin only).
-        
+
         Args:
             admin: The admin user making the request
             user_id: ID of the user whose cart to retrieve
-            
+
         Returns:
             Cart: The requested user's cart
-            
+
         Raises:
             HTTPException: If admin is not authorized or user not found
         """
@@ -115,29 +115,29 @@ class ShoppingCartService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only administrators can view other users' carts."
             )
-            
+
         # Check if target user exists
-        query = select(UserModel).where(UserModel.id == user_id)
-        result = await self.session.execute(query)
-        target_user = result.scalar_one_or_none()
-        
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        user_result = await self.session.execute(user_query)
+        target_user = user_result.scalar_one_or_none()
+
         if not target_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found."
             )
-            
+
         # Get or create cart for target user
         cart = await self.get_or_create_cart(target_user)
-        
+
         # Eagerly load items and their related movie data
-        query = (
+        cart_query = (
             select(Cart)
             .where(Cart.id == cart.id)
             .options(
                 selectinload(Cart.items).selectinload(CartItem.movie).selectinload(MovieModel.genres)
             )
         )
-        result = await self.session.execute(query)
-        cart = result.scalar_one()
-        return cart
+        cart_result = await self.session.execute(cart_query)
+        cart_with_items = cart_result.scalar_one()
+        return cart_with_items
