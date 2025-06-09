@@ -39,6 +39,7 @@ async def fetch_payments(
         query = query.where(PaymentModel.status == status)
 
     query = query.options(
+        joinedload(PaymentModel.user),
         joinedload(PaymentModel.order),
         selectinload(PaymentModel.payment_items)
         .selectinload(PaymentItemModel.order_item)
