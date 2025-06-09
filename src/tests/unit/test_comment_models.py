@@ -1,7 +1,6 @@
 import pytest
 from datetime import datetime
 from database.models.comments import Comment, Notification, CommentLike
-# adding comment to push
 
 
 

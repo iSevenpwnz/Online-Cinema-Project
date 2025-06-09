@@ -11,8 +11,6 @@ from database.models.movies import (
     MovieModel,
     CertificationEnum,
 )
-# adding comment to push
-
 
 
 @pytest.fixture(scope="module")

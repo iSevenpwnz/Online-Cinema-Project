@@ -12,7 +12,6 @@ from schemas.movies import (
     MovieListResponseSchema,
     MovieUpdateSchema
 )
-# adding comment to push
 
 
 

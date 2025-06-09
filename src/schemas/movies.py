@@ -2,7 +2,6 @@ from decimal import Decimal
 from datetime import datetime
 from typing import Optional, List, Union
 from pydantic import BaseModel, Field, field_validator
-# adding comment to push
 
 
 from schemas.examples.movies import (

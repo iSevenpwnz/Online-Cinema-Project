@@ -9,7 +9,6 @@ from sqlalchemy.orm import joinedload, selectinload
 from database import get_db, MovieModel, movie_genres, UserModel
 from database import CertificationModel, GenreModel, StarModel, DirectorModel
 from database.models.orders import Order, OrderItem, OrderStatusEnum
-# adding comment to push
 
 
 from schemas.examples.movies import (

@@ -7,7 +7,6 @@ from schemas.comments import (
     CommentLikeOut,
     NotificationOut
 )
-# adding comment to push
 
 
 @pytest.mark.asyncio
