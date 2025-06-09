@@ -1,37 +1,20 @@
-# Test deployment workflow for cd-settings branchMore actions
 name: Deploy to AWS EC2
 
 on:
   push:
-    branches: [main, develop, cd-setting]
-
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
     branches:
-      - main
-      - develop
-      - cd-setting
+      - main, develop, cd-setting
+  pull_request:
+    types: [opened]
+    branches:
+      - main,develop, cd-setting
 
 jobs:
   deploy:
-    if: |
-      (github.event_name == 'push') ||
-
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    if: github.event.pull_request.merged == true || github.event_name == 'push'
     runs-on: ubuntu-latest
-    steps:
-      - name: Debug - Show trigger info
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Head ref: ${{ github.head_ref }}"
-          echo "Base ref: ${{ github.base_ref }}"
-          echo "Is merged: ${{ github.event.pull_request.merged }}"
-          echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
 
+    steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
@@ -44,73 +27,7 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to server
+      - name: Execute Deployment Script on EC2
         run: |
-          BRANCH="${{ github.head_ref || github.ref_name }}"
-          REPO_URL="https://github.com/iSevenpwnz/Online-Cinema-Project.git"
-          PROJECT_DIR="/home/ubuntu/src/online-cinema-project"
-          echo "Deploying branch: $BRANCH"
-          echo "Repository URL: $REPO_URL"
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
-            set -e
-            
-            PROJECT_DIR="$PROJECT_DIR"
-            REPO_URL="$REPO_URL"
-            BRANCH="$BRANCH"
-            
-            echo "Deploying branch: \$BRANCH"
-            echo "Project directory: \$PROJECT_DIR"
-            echo "Repository URL: \$REPO_URL"
-            
-            # Create project directory if it doesn't exist
-            mkdir -p "$(dirname "$PROJECT_DIR")"
-            
-            # Clone repo if it doesn't exist or is empty
-            if [ ! -d "$PROJECT_DIR/.git" ]; then
-              echo "Cloning repository..."
-              rm -rf "$PROJECT_DIR"
-              git clone "$REPO_URL" "$PROJECT_DIR"
-              cd "$PROJECT_DIR"
-            else
-              echo "Repository exists, updating..."
-              cd "$PROJECT_DIR"
-              # Force fetch all refs to fix any conflicts
-              git fetch origin --force --prune
-              # Clean any local changes
-              git clean -fd
-              git reset --hard HEAD
-            fi
-            
-            # Checkout and reset to target branch (force)
-            echo "Checking out branch: $BRANCH"
-            git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
-            git reset --hard "origin/$BRANCH"
-            
-            # Deploy with docker compose
-            echo "Starting Docker containers..."
-            docker compose -f docker-compose-prod.yml up -d --build
-            
-            # Force rebuild nginx to reload config
-            echo "Rebuilding nginx with new config..."
-            docker compose -f docker-compose-prod.yml stop nginx
-            docker compose -f docker-compose-prod.yml rm -f nginx
-            docker compose -f docker-compose-prod.yml up -d --build nginx
-            
-            # Wait for containers to be ready
-            echo "Waiting for containers to start..."
-            sleep 30
-            
-            # Check container status
-            echo "Container status:"
-            docker compose -f docker-compose-prod.yml ps
-            
-            # Check if web container is healthy
-            echo "Checking web container logs:"
-            docker logs backend_theater --tail 20
-            
-            # Check nginx container logs
-            echo "Checking nginx container logs:"
-            docker logs nginx --tail 20
-            
-            echo "Deployment completed successfully for branch: $BRANCH"
-          EOF
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                'bash /home/ubuntu/src/online-cinema-project/commands/deploy.sh'
