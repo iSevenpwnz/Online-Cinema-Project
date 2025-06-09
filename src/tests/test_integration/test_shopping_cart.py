@@ -298,3 +298,188 @@ async def test_admin_view_nonexistent_user_cart(
     )
     assert response.status_code == 404
     assert "user not found" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_check_movie_in_carts_when_present(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+    movie: MovieModel
+):
+    """Test checking if movie is in any cart when it is present."""
+    # Create admin user
+    admin = UserModel.create(
+        email="admin@example.com",
+        raw_password="AdminPass123!",
+        group_id=3  # Admin group
+    )
+    admin.is_active = True
+    db_session.add(admin)
+    await db_session.commit()
+
+    # Get admin auth token
+    response = await client.post(
+        "/api/v1/accounts/login/",
+        json={
+            "email": admin.email,
+            "password": "AdminPass123!"
+        }
+    )
+    admin_token = response.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # Add movie to cart
+    await client.post(f"/api/v1/shopping-cart/add/{movie.id}", headers=admin_headers)
+
+    # Check movie presence
+    response = await client.get(
+        f"/api/v1/shopping-cart/check-movie/{movie.id}",
+        headers=admin_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_in_cart"] is True
+
+
+@pytest.mark.asyncio
+async def test_check_movie_in_carts_when_not_present(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+    movie: MovieModel
+):
+    """Test checking if movie is in any cart when it is not present."""
+    # Create admin user
+    admin = UserModel.create(
+        email="admin@example.com",
+        raw_password="AdminPass123!",
+        group_id=3  # Admin group
+    )
+    admin.is_active = True
+    db_session.add(admin)
+    await db_session.commit()
+
+    # Get admin auth token
+    response = await client.post(
+        "/api/v1/accounts/login/",
+        json={
+            "email": admin.email,
+            "password": "AdminPass123!"
+        }
+    )
+    admin_token = response.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    response = await client.get(
+        f"/api/v1/shopping-cart/check-movie/{movie.id}",
+        headers=admin_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_in_cart"] is False
+
+
+@pytest.mark.asyncio
+async def test_check_movie_in_carts_unauthorized(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+    movie: MovieModel
+):
+    """Test checking if movie is in any cart without admin rights."""
+    # Create regular user
+    user = UserModel.create(
+        email="user@example.com",
+        raw_password="UserPass123!",
+        group_id=1  # User group
+    )
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+
+    # Get auth token for regular user
+    response = await client.post(
+        "/api/v1/accounts/login/",
+        json={
+            "email": user.email,
+            "password": "UserPass123!"
+        }
+    )
+    user_token = response.json()["access_token"]
+    user_headers = {"Authorization": f"Bearer {user_token}"}
+
+    # Try to check movie presence
+    response = await client.get(
+        f"/api/v1/shopping-cart/check-movie/{movie.id}",
+        headers=user_headers
+    )
+    assert response.status_code == 403
+    data = response.json()
+    assert data["detail"] == "Only administrators can check movie presence in carts."
+
+
+@pytest.mark.asyncio
+async def test_check_movie_in_carts_with_multiple_carts(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_user_groups: Any,
+    jwt_manager: Any,
+    movie: MovieModel
+):
+    """Test checking if movie is in any cart when it is present in multiple carts."""
+    # Create admin user
+    admin = UserModel.create(
+        email="admin@example.com",
+        raw_password="AdminPass123!",
+        group_id=3  # Admin group
+    )
+    admin.is_active = True
+    db_session.add(admin)
+    
+    # Create regular user
+    user = UserModel.create(
+        email="user@example.com",
+        raw_password="UserPass123!",
+        group_id=1  # User group
+    )
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+
+    # Get auth tokens
+    admin_response = await client.post(
+        "/api/v1/accounts/login/",
+        json={
+            "email": admin.email,
+            "password": "AdminPass123!"
+        }
+    )
+    admin_token = admin_response.json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    user_response = await client.post(
+        "/api/v1/accounts/login/",
+        json={
+            "email": user.email,
+            "password": "UserPass123!"
+        }
+    )
+    user_token = user_response.json()["access_token"]
+    user_headers = {"Authorization": f"Bearer {user_token}"}
+
+    # Add movie to both users' carts
+    await client.post(f"/api/v1/shopping-cart/add/{movie.id}", headers=admin_headers)
+    await client.post(f"/api/v1/shopping-cart/add/{movie.id}", headers=user_headers)
+
+    # Check movie presence as admin
+    response = await client.get(
+        f"/api/v1/shopping-cart/check-movie/{movie.id}",
+        headers=admin_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_in_cart"] is True
