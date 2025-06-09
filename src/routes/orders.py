@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -88,6 +88,12 @@ async def get_order_by_id(
     summary="Change order status",
     description="Change the status of an order for the current user.",
 )
+@router.patch(
+    "/{order_id}/status",
+    response_model=OrderResponse,
+    summary="Change order status",
+    description="Change the status of an order. Admins can change to any status. Users can only cancel their orders.",
+)
 async def change_order_status(
     order_id: int = Path(..., description="ID of the order to update"),
     new_status: str = Query(..., description="New status for the order"),
@@ -97,12 +103,12 @@ async def change_order_status(
     if new_status not in OrderStatusEnum._value2member_map_:
         allowed = [e.value for e in OrderStatusEnum]
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status value: {new_status}. Allowed values: {allowed}",
         )
+
+    status_enum = OrderStatusEnum(new_status)
+
     service = OrderService(db)
-    try:
-        order = await service.change_order_status(order_id, OrderStatusEnum(new_status), current_user)
-        return OrderResponse.from_orm(order)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    order = await service.change_order_status(order_id, status_enum, current_user)
+    return OrderResponse.from_orm(order)
