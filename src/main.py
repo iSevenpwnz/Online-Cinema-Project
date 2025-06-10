@@ -13,6 +13,7 @@ from routes import (
     shopping_cart_router,
     extra_functionality_movie_router,
     comments_router,
+    users_router,
 )
 
 app = FastAPI(
@@ -106,9 +107,7 @@ app.include_router(
 app.include_router(
     movie_router, prefix=f"{api_version_prefix}/theater", tags=["theater"]
 )
-app.include_router(
-    shopping_cart_router, tags=["shopping-cart"]
-)
+app.include_router(shopping_cart_router, tags=["shopping-cart"])
 app.include_router(
     payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"]
 )
@@ -122,4 +121,7 @@ app.include_router(
 )
 app.include_router(
     comments_router, prefix=f"{api_version_prefix}/comments", tags=["comments"]
+)
+app.include_router(
+    users_router, prefix=f"{api_version_prefix}/users", tags=["users"]
 )
