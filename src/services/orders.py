@@ -14,7 +14,6 @@ class OrderService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-
     async def create_order_from_cart(
         self, user: UserModel, cart_item_ids: Optional[List[int]] = None
     ) -> Order:
