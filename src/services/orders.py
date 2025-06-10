@@ -14,7 +14,10 @@ class OrderService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_order_from_cart(self, user: UserModel, movie_id: Optional[int] = None) -> Order:
+
+    async def create_order_from_cart(
+        self, user: UserModel, cart_item_ids: Optional[List[int]] = None
+    ) -> Order:
         cart_query = (
             select(Cart)
             .where(Cart.user_id == user.id)
@@ -26,17 +29,36 @@ class OrderService:
         if not cart or not cart.items:
             raise ValueError("Cart is empty.")
 
-        if movie_id is not None:
-            filtered_items = [item for item in cart.items if item.movie_id == movie_id]
+        if cart_item_ids:
+            filtered_items = [item for item in cart.items if item.id in cart_item_ids]
             if not filtered_items:
-                raise ValueError(f"Movie with id {movie_id} is not in the cart.")
+                raise ValueError("Selected cart items not found in your cart.")
         else:
             filtered_items = cart.items
+
+        movie_ids = [item.movie_id for item in filtered_items]
+
+        existing_query = (
+            select(OrderItem.movie_id)
+            .join(Order)
+            .where(
+                Order.user_id == user.id,
+                OrderItem.movie_id.in_(movie_ids),
+                Order.status.in_([OrderStatusEnum.PAID, OrderStatusEnum.PENDING]),
+            )
+        )
+        existing_result = await self.session.execute(existing_query)
+        excluded_movie_ids = set(existing_result.scalars().all())
+
+        valid_items = [item for item in filtered_items if item.movie_id not in excluded_movie_ids]
+
+        if not valid_items:
+            raise ValueError("All selected movies are already purchased or pending in another order.")
 
         total_amount = Decimal("0.00")
         order_items: List[OrderItem] = []
 
-        for item in filtered_items:
+        for item in valid_items:
             movie = item.movie
             total_amount += movie.price
             order_items.append(OrderItem(movie_id=movie.id, price_at_order=movie.price))
@@ -50,7 +72,7 @@ class OrderService:
         )
         self.session.add(order)
 
-        for item in filtered_items:
+        for item in valid_items:
             await self.session.delete(item)
 
         await self.session.commit()
