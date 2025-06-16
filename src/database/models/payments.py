@@ -1,9 +1,16 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from pyexpat import native_encoding
 from typing import List
 
-from sqlalchemy import DECIMAL, DateTime, ForeignKey, func
+from sqlalchemy import (
+    DECIMAL,
+    DateTime,
+    ForeignKey,
+    func,
+    Enum as SqlAlchemyEnum,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models.accounts import UserModel
@@ -34,7 +41,9 @@ class PaymentModel(Base):
         server_default=func.now(),
         nullable=False,
     )
-    status: Mapped[PaymentStatusEnum] = mapped_column(nullable=False)
+    status: Mapped[PaymentStatusEnum] = mapped_column(
+        SqlAlchemyEnum(PaymentStatusEnum)
+    )
     external_payment_id: Mapped[str] = mapped_column(nullable=False)
 
     user: Mapped[UserModel] = relationship()

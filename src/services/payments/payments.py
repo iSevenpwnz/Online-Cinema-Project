@@ -202,91 +202,100 @@ class StripePaymentService(PaymentService):
             self._construct_stripe_event, payload, sig_header
         )
 
-        payment = None
-
         if event["type"] == "checkout.session.completed":
-            session = event["data"]["object"]
-
-            order_id = int(session["metadata"]["order_id"])
-            line_items = await run_in_threadpool(
-                self._fetch_sessions_line_items,
-                session,
-            )
-
-            order_item_ids_and_amount = await asyncio.gather(
-                *[
-                    run_in_threadpool(
-                        self._fetch_order_item_id_from_line_item, line_item
-                    )
-                    for line_item in line_items
-                ]
-            )
-
-            order = await db.scalar(select(Order).where(Order.id == order_id))
-
-            if order is None:
-                raise ValueError(
-                    f"Order with id {order_id} not found in the database."
-                )
-
-            payment = PaymentModel(
-                user_id=order.user_id,
-                order_id=order.id,
-                status=PaymentStatusEnum.SUCCESSFUL,
-                external_payment_id=session["payment_intent"],
-            )
-
-            db.add(payment)
-            await db.flush()
-
-            for (
-                order_item_id,
-                price_at_payment_cents,
-            ) in order_item_ids_and_amount:
-                payment_item = PaymentItemModel(
-                    payment_id=payment.id,
-                    order_item_id=order_item_id,
-                    price_at_payment=Decimal(price_at_payment_cents)
-                    / Decimal("100"),
-                )
-                db.add(payment_item)
-
-            await db.flush()
-
-            order.status = OrderStatusEnum.PAID
-            await db.flush()
+            return await self._handle_checkout_session_completed(event, db)
         elif event["type"] == "charge.refunded":
-            session = event["data"]["object"]
-            payment_intent_id = session.get("payment_intent")
-            if not payment_intent_id:
-                raise ValueError(
-                    "No payment_intent found in charge.refunded event."
-                )
+            return await self._handle_charge_refunded(event, db)
 
-            payment = await db.scalar(
-                select(PaymentModel).where(
-                    PaymentModel.external_payment_id == payment_intent_id
+        return None
+
+    async def _handle_checkout_session_completed(
+        self, event: stripe.Event, db: AsyncSession
+    ) -> PaymentModel:
+        session = event["data"]["object"]
+        order_id = int(session["metadata"]["order_id"])
+        line_items = await run_in_threadpool(
+            self._fetch_sessions_line_items, session
+        )
+
+        order_item_ids_and_amount = await asyncio.gather(
+            *[
+                run_in_threadpool(
+                    self._fetch_order_item_id_from_line_item, line_item
                 )
+                for line_item in line_items
+            ]
+        )
+
+        order = await db.scalar(select(Order).where(Order.id == order_id))
+        if order is None:
+            raise ValueError(
+                f"Order with id {order_id} not found in the database."
             )
-            if payment is None:
-                raise ValueError(
-                    f"Payment with external_payment_id {payment_intent_id} not found in the database."
-                )
-            payment.status = PaymentStatusEnum.REFUNDED
-            await db.flush()
 
-            order = await db.scalar(
-                select(Order).where(Order.id == payment.order_id)
+        payment = PaymentModel(
+            user_id=order.user_id,
+            order_id=order.id,
+            status=PaymentStatusEnum.SUCCESSFUL,
+            external_payment_id=session["payment_intent"],
+        )
+
+        db.add(payment)
+        await db.flush()
+
+        await self._add_payment_items(
+            db, payment.id, order_item_ids_and_amount
+        )
+
+        order.status = OrderStatusEnum.PAID
+        await db.flush()
+        return payment
+
+    async def _add_payment_items(
+        self, db: AsyncSession, payment_id: int, order_item_ids_and_amount: list[tuple[int, int]]
+    ):
+        for order_item_id, price_at_payment_cents in order_item_ids_and_amount:
+            payment_item = PaymentItemModel(
+                payment_id=payment_id,
+                order_item_id=order_item_id,
+                price_at_payment=Decimal(price_at_payment_cents) / Decimal("100"),
+            )
+            db.add(payment_item)
+        await db.flush()
+
+    async def _handle_charge_refunded(
+        self, event: stripe.Event, db: AsyncSession
+    ) -> PaymentModel:
+        session = event["data"]["object"]
+        payment_intent_id = session.get("payment_intent")
+        if not payment_intent_id:
+            raise ValueError(
+                "No payment_intent found in charge.refunded event."
             )
 
-            if not order:
-                raise ValueError(
-                    f"Order with id {payment.order_id} not found in the database."
-                )
-            order.status = OrderStatusEnum.CANCELED
+        payment = await db.scalar(
+            select(PaymentModel).where(
+                PaymentModel.external_payment_id == payment_intent_id
+            )
+        )
+        if payment is None:
+            raise ValueError(
+                f"Payment with external_payment_id {payment_intent_id} not found in the database."
+            )
+        payment.status = PaymentStatusEnum.REFUNDED
+        await db.flush()
 
-            await db.flush()
+        order = await db.scalar(
+            select(Order).where(Order.id == payment.order_id)
+        )
 
+        if not order:
+            raise ValueError(
+                f"Order with id {payment.order_id} not found in the database."
+            )
+        order.status = OrderStatusEnum.CANCELED
+
+        await db.flush()
         return payment
 
 
