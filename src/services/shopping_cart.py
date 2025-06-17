@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
@@ -60,29 +60,21 @@ class ShoppingCartService:
         cart = await self.get_or_create_cart(user)
         await validate_cart_ownership(self.session, cart.id, user.id)
 
-        query = select(CartItem).where(
-            CartItem.cart_id == cart.id, CartItem.movie_id == movie_id
+        stmt = delete(CartItem).where(
+            CartItem.cart_id == cart.id,
+            CartItem.movie_id == movie_id
         )
-        result = await self.session.execute(query)
-        cart_item = result.scalar_one_or_none()
-
-        if cart_item:
-            await self.session.delete(cart_item)
-            await self.session.commit()
+        await self.session.execute(stmt)
+        await self.session.commit()
 
     async def clear_cart(self, user: UserModel) -> None:
         """Clear user's cart."""
         cart = await self.get_or_create_cart(user)
         await validate_cart_ownership(self.session, cart.id, user.id)
 
-        query = select(CartItem).where(CartItem.cart_id == cart.id)
-        result = await self.session.execute(query)
-        items = result.scalars().all()
-
-        if items:
-            for item in items:
-                await self.session.delete(item)
-            await self.session.commit()
+        stmt = delete(CartItem).where(CartItem.cart_id == cart.id)
+        await self.session.execute(stmt)
+        await self.session.commit()
 
     async def is_movie_in_any_cart(self, movie_id: int) -> bool:
         """
@@ -103,7 +95,6 @@ class ShoppingCartService:
         cart = await self.get_or_create_cart(user)
         await validate_cart_ownership(self.session, cart.id, user.id)
 
-        # Eagerly load items and their related movie data
         query = (
             select(Cart)
             .where(Cart.id == cart.id)
@@ -135,7 +126,6 @@ class ShoppingCartService:
                 detail="Only administrators can view other users' carts."
             )
 
-        # Check if target user exists
         user_query = select(UserModel).where(UserModel.id == user_id)
         user_result = await self.session.execute(user_query)
         target_user = user_result.scalar_one_or_none()
@@ -146,10 +136,8 @@ class ShoppingCartService:
                 detail="User not found."
             )
 
-        # Get or create cart for target user
         cart = await self.get_or_create_cart(target_user)
 
-        # Eagerly load items and their related movie data
         cart_query = (
             select(Cart)
             .where(Cart.id == cart.id)
