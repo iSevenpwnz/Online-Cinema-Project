@@ -100,7 +100,7 @@ def test_movie_base_schema_valid():
     """
     data = make_valid_movie_data()
     movie = MovieBaseSchema(**data)
-    assert movie.uuid == data["uuid"], "UUID does not match expected value."
+    assert str(movie.uuid) == data["uuid"], "UUID does not match expected value."
     assert movie.genres[0] == "Action", "Genre name did not match."
     assert movie.stars[0] == "Brad Pitt", "Star name did not match."
     assert movie.directors[0] == "James Cameron", "Director name did not match."

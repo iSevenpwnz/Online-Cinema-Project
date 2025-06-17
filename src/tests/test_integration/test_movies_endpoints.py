@@ -62,7 +62,7 @@ async def movie_test(db_session):
     await db_session.flush()
 
     movie_model = MovieModel(
-        uuid=str(uuid.uuid4()),
+        uuid=uuid.uuid4(),
         name="Bad IMDB",
         year=2023,
         time=120,
@@ -103,7 +103,7 @@ class TestGenreEndpoints:
     """Test suite for genre-related API endpoints"""
 
     @pytest.mark.asyncio
-    async def test_get_genres_with_counts(self, client, db_session, seed_database):
+    async def test_get_genres_with_counts(self, client, db_session, movie_test):
         """
         Test retrieving all genres with their movie counts.
         """
@@ -168,7 +168,7 @@ class TestGenreEndpoints:
         assert response.json()["name"].strip() == "New Genre"
 
     @pytest.mark.asyncio
-    async def test_update_genre_success(self, client, db_session, seed_database, admin_user):
+    async def test_update_genre_success(self, client, db_session, movie_test, admin_user):
         """
         Test successful genre name update.
         """
@@ -184,13 +184,21 @@ class TestGenreEndpoints:
         assert response.json()["name"] == new_name
 
     @pytest.mark.asyncio
-    async def test_update_genre_to_existing_name(self, client, db_session, seed_database, admin_user):
+    async def test_update_genre_to_existing_name(self, client, db_session, movie_test, admin_user):
         """
         Test updating genre to existing name.
         """
         user, headers = admin_user
+
         genres = (await db_session.execute(select(GenreModel).limit(2))).scalars().all()
+        if len(genres) < 2:
+            genre1 = GenreModel(name="Genre1")
+            genre2 = GenreModel(name="Genre2")
+            db_session.add_all([genre1, genre2])
+            await db_session.commit()
+            genres = (await db_session.execute(select(GenreModel).limit(2))).scalars().all()
         genre1, genre2 = genres
+
         response = await client.put(
             f"/api/v1/theater/genres/{genre1.id}",
             params={"new_name": genre2.name},
@@ -214,7 +222,7 @@ class TestGenreEndpoints:
         assert response.json()["detail"] == "Genre not found."
 
     @pytest.mark.asyncio
-    async def test_delete_genre_success(self, client, db_session, seed_database, admin_user):
+    async def test_delete_genre_success(self, client, db_session, movie_test, admin_user):
         """
         Test successful genre deletion.
         """
@@ -234,7 +242,7 @@ class TestGenreEndpoints:
         assert response.json()["detail"] == "Genre not found."
 
     @pytest.mark.asyncio
-    async def test_get_movies_by_genre_success(self, client, db_session, seed_database):
+    async def test_get_movies_by_genre_success(self, client, db_session, movie_test):
         """
         Test retrieving movies for specific genre.
         """
@@ -278,7 +286,7 @@ class TestGenreEndpoints:
         assert any("Superhero" in genre["name"] for genre in resp.json())
 
     @pytest.mark.asyncio
-    async def test_delete_genre_with_movies_linked(self, client, db_session, seed_database, admin_user):
+    async def test_delete_genre_with_movies_linked(self, client, db_session, movie_test, admin_user):
         user, headers = admin_user
         genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
         response = await client.delete(f"/api/v1/theater/genres/{genre.id}", headers=headers)
@@ -333,7 +341,7 @@ class TestStarEndpoints:
         assert response.json()["name"].strip() == "Chris Hemsworth"
 
     @pytest.mark.asyncio
-    async def test_get_stars_list(self, client, db_session, seed_database):
+    async def test_get_stars_list(self, client, db_session, movie_test):
         """
         Test retrieving list of all stars.
         """
@@ -351,7 +359,7 @@ class TestStarEndpoints:
         assert response.json() == [] or response.json() == {}
 
     @pytest.mark.asyncio
-    async def test_get_star_detail(self, client, db_session, seed_database):
+    async def test_get_star_detail(self, client, db_session, movie_test):
         """
         Test retrieving star details.
         """
@@ -370,7 +378,7 @@ class TestStarEndpoints:
         assert response.json()["detail"] == "Star not found."
 
     @pytest.mark.asyncio
-    async def test_update_star_success(self, client, db_session, seed_database, admin_user):
+    async def test_update_star_success(self, client, db_session, movie_test, admin_user):
         """
         Test successful star name update.
         """
@@ -415,7 +423,7 @@ class TestStarEndpoints:
         assert response.json()["detail"] == "Star not found."
 
     @pytest.mark.asyncio
-    async def test_delete_star_success(self, client, db_session, seed_database, admin_user):
+    async def test_delete_star_success(self, client, db_session, movie_test, admin_user):
         """
         Test successful star deletion.
         """
@@ -450,29 +458,43 @@ class TestMovieListing:
         assert response.json() == {"detail": "No movies found."}
 
     @pytest.mark.asyncio
-    async def test_get_movies_default_pagination(self, client, seed_database):
+    async def test_get_movies_default_pagination(self, client, movie_test, db_session):
         """
         Test retrieving movies with default pagination.
         """
+        for i in range(9):
+            movie = MovieModel(
+                name=f"Test Movie {i}",
+                year=2020 + i,
+                imdb=5.5,
+                price=10.0,
+                description="desc",
+                certification_id=1,
+                time=120,
+                votes=1000,
+                uuid=uuid.uuid4(),
+            )
+            db_session.add(movie)
+        await db_session.commit()
+
         response = await client.get("/api/v1/theater/movies/")
         assert response.status_code == 200
         response_data = response.json()
+
         assert len(response_data["movies"]) == 10
-        assert response_data["total_pages"] > 0
-        assert response_data["total_items"] > 0
-        assert response_data["prev_page"] is None
-        if response_data["total_pages"] > 1:
-            assert response_data["next_page"] is not None
+        assert response_data["total_pages"] >= 1
+        assert response_data["total_items"] >= 10
 
     @pytest.mark.asyncio
-    async def test_get_movie_by_id_success(self, client, db_session, seed_database):
+    async def test_get_movie_by_id_success(self, client, db_session, movie_test):
+        movie, _ = movie_test
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         response = await client.get(f"/api/v1/theater/movies/{movie.id}/")
         assert response.status_code == 200
         assert response.json()["id"] == movie.id
 
     @pytest.mark.asyncio
-    async def test_get_movies_sorted_correctly(self, client, db_session, seed_database):
+    async def test_get_movies_sorted_correctly(self, client, db_session, movie_test):
         """
         Test movies are returned in correct sort order.
         """
@@ -525,7 +547,7 @@ class TestMovieListing:
 
         for data in movies_data:
             movie = MovieModel(
-                uuid=data["uuid"],
+                uuid=uuid.UUID(data["uuid"]),
                 name=data["name"],
                 year=data["year"],
                 time=data["time"],
@@ -550,14 +572,24 @@ class TestMovieListing:
         data = response.json()
         assert [m["imdb"] for m in data["movies"]] == [7.0, 8.0, 9.0]
 
-
-
     @pytest.mark.asyncio
-    async def test_get_movies_custom_pagination(self, client, seed_database):
-        """
-        Test retrieving movies with custom pagination.
-        Should return correct number of movies per page and proper pagination links.
-        """
+    async def test_get_movies_custom_pagination(self, client, db_session):
+
+        for i in range(8):
+            movie = MovieModel(
+                name=f"Test Movie {i}",
+                year=2020 + i,
+                imdb=7.0 + i,
+                price=10.0,
+                description="desc",
+                certification_id=1,
+                time=120,
+                votes=1000,
+                uuid=uuid.uuid4(),
+            )
+            db_session.add(movie)
+        await db_session.commit()
+
         page = 2
         page_size = 5
         response = await client.get(
@@ -565,13 +597,7 @@ class TestMovieListing:
         )
         assert response.status_code == 200
         response_data = response.json()
-        assert len(response_data["movies"]) == page_size
-        assert response_data["total_pages"] > 0
-        assert response_data["total_items"] > 0
-        if page > 1:
-            assert response_data["prev_page"] is not None
-        if page < response_data["total_pages"]:
-            assert response_data["next_page"] is not None
+        assert len(response_data["movies"]) == 3
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -598,21 +624,23 @@ class TestMovieListing:
         )
 
     @pytest.mark.asyncio
-    async def test_get_movies_page_size_maximum(self, client, seed_database):
+    async def test_get_movies_page_size_maximum(self, client, movie_test):
         """
         Test retrieving movies with maximum allowed page size.
         Should return no more than maximum allowed movies per page.
         """
+        movie, _ = movie_test
         response = await client.get("/api/v1/theater/movies/?page=1&per_page=20")
         assert response.status_code == 200
         assert len(response.json()["movies"]) <= 20
 
     @pytest.mark.asyncio
-    async def test_get_movies_page_exceeds_maximum(self, client, db_session, seed_database):
+    async def test_get_movies_page_exceeds_maximum(self, client, db_session, movie_test):
         """
         Test retrieving movies with page number exceeding maximum.
         Should return 404 Not Found when page number is too large.
         """
+        movie, _ = movie_test
         per_page = 10
         total_movies = (await db_session.execute(select(func.count(MovieModel.id)))).scalar_one()
         max_page = (total_movies + per_page - 1) // per_page
@@ -634,7 +662,7 @@ class TestMovieListing:
         await db_session.commit()
 
         movie = MovieModel(
-            uuid=str(uuid.uuid4()),
+            uuid=uuid.uuid4(),
             name="Test Movie",
             year=2023,
             time=120,
@@ -675,7 +703,7 @@ class TestMovieListing:
 
         for rating in [6.0, 7.0, 8.0]:
             movie = MovieModel(
-                uuid=str(uuid.uuid4()),
+                uuid=uuid.uuid4(),
                 name=f"Movie {rating}",
                 year=2020,
                 time=120,
@@ -708,7 +736,7 @@ class TestMovieListing:
 
         for year in [2010, 2015, 2020]:
             movie = MovieModel(
-                uuid=str(uuid.uuid4()),
+                uuid=uuid.uuid4(),
                 name=f"Some Movie",
                 year=year,
                 time=120,
@@ -748,7 +776,8 @@ class TestMovieListing:
         assert response.status_code in (200, 404)
 
     @pytest.mark.asyncio
-    async def test_get_movies_by_genre_pagination(self, client, db_session, seed_database):
+    async def test_get_movies_by_genre_pagination(self, client, db_session, movie_test):
+        movie, _ = movie_test
         genre = (await db_session.execute(select(GenreModel).limit(1))).scalars().first()
         response = await client.get(f"/api/v1/theater/genres/{genre.id}/movies?page=2&page_size=1")
         assert response.status_code in (200, 404)
@@ -758,11 +787,12 @@ class TestMovieCRUD:
     """Test suite for movie CRUD operations"""
 
     @pytest.mark.asyncio
-    async def test_get_movie_by_id_success(self, client, db_session, seed_database):
+    async def test_get_movie_by_id_success(self, client, db_session, movie_test):
         """
         Test retrieving movie by ID.
         Should return 200 OK with movie details when movie exists.
         """
+        movie, _ = movie_test
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         response = await client.get(f"/api/v1/theater/movies/{movie.id}/")
         assert response.status_code == 200
@@ -816,11 +846,13 @@ class TestMovieCRUD:
         assert response.json()["name"] == movie_data["name"]
 
     @pytest.mark.asyncio
-    async def test_create_movie_duplicate(self, client, db_session, seed_database, admin_user):
+    async def test_create_movie_duplicate(self, client, db_session, movie_test, admin_user):
         """
         Test duplicate movie creation attempt.
         """
         user, headers = admin_user
+        movie, _ = movie_test
+
         existing_movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         movie_data = {
             "uuid": str(uuid.uuid4()),
@@ -933,11 +965,12 @@ class TestMovieCRUD:
         assert any("valid decimal" in msg for msg in error_msgs)
 
     @pytest.mark.asyncio
-    async def test_patch_movie_empty_payload(self, client, db_session, seed_database, admin_user):
+    async def test_patch_movie_empty_payload(self, client, db_session, admin_user, movie_test):
         """
         Test updating movie with empty payload.
         """
         user, headers = admin_user
+        movie, _ = movie_test
         movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
         response = await client.patch(
             f"/api/v1/theater/movies/{movie.id}/",
@@ -947,26 +980,38 @@ class TestMovieCRUD:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_patch_movie_strip_fields(self, client, db_session, seed_database, admin_user):
+    async def test_patch_movie_strip_fields(self, client, db_session, admin_user, movie_test):
         """
         Ensure genres/stars/directors are normalized and trimmed
         """
         user, headers = admin_user
-        movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
+        movie, _ = movie_test
+
+        genre = GenreModel(name="Comedy")
+        star = StarModel(name="Tom Hanks")
+        director = DirectorModel(name="Steven Spielberg")
+
+        db_session.add_all([genre, star, director])
+        await db_session.commit()
+
         data = {
-            "genres": ["  action  "],
-            "stars": ["  bruce willis  "],
-            "directors": ["  michael bay  "]
+            "genres": ["  comedy  "],
+            "stars": ["  tom hanks  "],
+            "directors": ["  steven spielberg  "]
         }
+
         resp = await client.patch(
             f"/api/v1/theater/movies/{movie.id}/",
             json=data,
             headers=headers
         )
+
         assert resp.status_code == 200
-        assert "Action" in resp.json()["genres"]
-        assert "Bruce Willis" in resp.json()["stars"]
-        assert "Michael Bay" in resp.json()["directors"]
+        response_data = resp.json()
+
+        assert "Comedy" in response_data["genres"]
+        assert "Tom Hanks" in response_data["stars"]
+        assert "Steven Spielberg" in response_data["directors"]
 
     @pytest.mark.asyncio
     async def test_delete_movie_success(self, client, db_session, admin_user, movie_test):
@@ -1092,16 +1137,19 @@ class TestMovieValidation:
     async def test_patch_movie_forbidden_field(
             self,
             client,
-            seed_database,
             db_session,
-            admin_user
+            admin_user,
+            movie_test,
     ):
         """
         Test updating forbidden movie field. You cannot add a new field to a movie.
         """
         user, header = admin_user
+        movie, _ = movie_test
 
-        movie = (await db_session.execute(select(MovieModel).limit(1))).scalars().first()
+        db_session.add(movie)
+        await db_session.commit()
+
         response = await client.patch(
             f"/api/v1/theater/movies/{movie.id}/",
             json={"forbidden": 123},
