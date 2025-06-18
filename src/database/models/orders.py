@@ -2,7 +2,7 @@ import datetime
 from enum import Enum
 from typing import List
 
-from sqlalchemy import ForeignKey, Date, DECIMAL
+from sqlalchemy import ForeignKey, DECIMAL, DateTime, Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base, UserModel, MovieModel
@@ -19,12 +19,16 @@ class Order(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    created_at: Mapped[datetime.date] = mapped_column(Date, nullable=False)
-    status: Mapped[OrderStatusEnum] = mapped_column(default=OrderStatusEnum.PENDING, nullable=False)
-    total_amount: Mapped[DECIMAL] = mapped_column(DECIMAL(10, 2))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    status: Mapped[OrderStatusEnum] = mapped_column(
+        SQLAlchemyEnum(OrderStatusEnum, name="order_status"), default=OrderStatusEnum.PENDING, nullable=False
+    )
+    total_amount: Mapped[DECIMAL] = mapped_column(DECIMAL(10, 2), nullable=False)
 
     user: Mapped["UserModel"] = relationship()
-    order_items: Mapped[List["OrderItem"]] = relationship(back_populates="order")
+    order_items: Mapped[List["OrderItem"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return (

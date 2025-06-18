@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models.accounts import UserModel, UserGroupEnum
+from database.models.accounts import UserModel
 from database.models.movies import MovieModel, CertificationModel, CertificationEnum
 from database.models.shopping_cart import Cart, CartItem
 from database.models.orders import Order, OrderItem, OrderStatusEnum
@@ -17,7 +17,7 @@ async def user(db_session: AsyncSession, seed_user_groups):
     user = UserModel.create(
         email="orderuser@example.com",
         raw_password="OrderPassword1!",
-        group_id=1  # Припускаємо, що це юзерська група (не admin)
+        group_id=1
     )
     user.is_active = True
     db_session.add(user)
@@ -88,7 +88,6 @@ async def test_create_order_from_cart_success(client: AsyncClient, auth_headers:
     assert data["total_amount"] == "150.00"
     assert len(data["items"]) == 1
 
-    # Перевіряємо, що кошик очищено
     result = await db_session.execute(select(CartItem).where(CartItem.cart_id == cart_with_items.id))
     items = result.scalars().all()
     assert len(items) == 0
@@ -148,8 +147,13 @@ async def test_get_order_history_with_filter(client: AsyncClient, auth_headers: 
 @pytest.mark.asyncio
 async def test_get_order_history_invalid_status_filter(client: AsyncClient, auth_headers: dict):
     response = await client.get("/api/v1/orders/history?status=INVALID", headers=auth_headers)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "invalid status values" in response.json()["detail"].lower()
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    errors = response.json()["detail"]
+    assert any(
+        err["type"] == "enum"
+        and "Input should be" in err["msg"]
+        for err in errors
+    )
 
 
 @pytest.mark.asyncio
@@ -190,7 +194,6 @@ async def test_change_order_status_success(client: AsyncClient, auth_headers: di
     await db_session.commit()
     await db_session.refresh(order)
 
-    # Користувач не admin, може скасувати
     response = await client.patch(f"/api/v1/orders/{order.id}/status?new_status=Canceled", headers=auth_headers)
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["status"] == OrderStatusEnum.CANCELED.value
@@ -209,9 +212,8 @@ async def test_change_order_status_invalid_transition(client: AsyncClient, auth_
     await db_session.commit()
     await db_session.refresh(order)
 
-    # Користувач не admin, спроба змінити статус не на CANCELED
     response = await client.patch(f"/api/v1/orders/{order.id}/status?new_status=Pending", headers=auth_headers)
-    assert response.status_code == status.HTTP_403_FORBIDDEN or response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_400_BAD_REQUEST]
 
 
 @pytest.mark.asyncio
@@ -243,8 +245,13 @@ async def test_change_order_status_from_canceled(client: AsyncClient, auth_heade
 @pytest.mark.asyncio
 async def test_change_order_status_invalid_status(client: AsyncClient, auth_headers: dict):
     response = await client.patch("/api/v1/orders/1/status?new_status=INVALID", headers=auth_headers)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "invalid status value" in response.json()["detail"].lower()
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    errors = response.json()["detail"]
+    assert any(
+        err["type"] == "enum"
+        and "Input should be" in err["msg"]
+        for err in errors
+    )
 
 
 @pytest.mark.asyncio
@@ -261,8 +268,13 @@ async def test_change_order_status_bad_param_format(client: AsyncClient, auth_he
     await db_session.refresh(order)
 
     response = await client.patch(f"/api/v1/orders/{order.id}/status?new_status=12345", headers=auth_headers)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "invalid status value" in response.json()["detail"].lower()
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    errors = response.json()["detail"]
+    assert any(
+        err["type"] == "enum"
+        and "Input should be" in err["msg"]
+        for err in errors
+    )
 
 
 @pytest.mark.asyncio
