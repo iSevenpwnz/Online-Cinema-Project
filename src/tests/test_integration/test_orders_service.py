@@ -5,6 +5,7 @@ from fastapi import status
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 
 from database.models.accounts import UserModel, UserGroupEnum
 from database.models.movies import MovieModel, CertificationModel, CertificationEnum
@@ -38,7 +39,7 @@ async def certification(db_session: AsyncSession):
 @pytest.fixture
 async def movie(db_session: AsyncSession, certification):
     movie = MovieModel(
-        uuid="movie-uuid-test",
+        uuid=uuid.uuid4(),
         name="Order Test Movie",
         year=2024,
         time=120,

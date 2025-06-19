@@ -3,6 +3,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from decimal import Decimal
+import uuid
 
 from database.models.movies import MovieModel, CertificationModel, CertificationEnum
 from database.models.shopping_cart import CartItem, Cart
@@ -40,7 +41,7 @@ async def certification(db_session: AsyncSession):
 async def movie(db_session: AsyncSession, certification):
     """Create a test movie."""
     movie = MovieModel(
-        uuid="test-movie-uuid",
+        uuid=uuid.uuid4(),
         name="Test Movie",
         year=2024,
         time=90,
@@ -145,7 +146,7 @@ async def test_clear_cart(
     """Test clearing the cart."""
     # Add multiple movies
     movie2 = MovieModel(
-        uuid="test-movie2-uuid",
+        uuid=uuid.uuid4(),
         name="Test Movie 2",
         year=2024,
         time=100,

@@ -12,6 +12,7 @@ from database.models.movies import MovieModel
 from database.models.accounts import UserModel
 from services.payments.payments import PaymentService, PaymentServicesEnum
 from typing import Any, Tuple
+import uuid
 
 from tests.doubles.stubs.emails import StubEmailSender
 
@@ -38,7 +39,7 @@ class MockStripePaymentService(PaymentService):
 @pytest.fixture
 async def payment_test_movie(db_session: AsyncSession) -> MovieModel:
     movie = MovieModel(
-        uuid="uuid-2",
+        uuid=uuid.uuid4(),
         name="Payment Test Movie",
         year=2024,
         time=100,
