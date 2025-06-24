@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -310,7 +312,7 @@ async def test_movie(db_session):
         certification_id=cert.id,
         time=120,
         votes=1000,
-        uuid="test-uuid-123",
+        uuid=uuid.uuid4(),
     )
     db_session.add(movie)
     await db_session.commit()
@@ -338,7 +340,7 @@ async def test_movies(db_session, seed_active_user):
             certification_id=cert.id,
             time=120,
             votes=1000,
-            uuid=f"test-uuid-{i}",
+            uuid=uuid.uuid4(),
         )
         db_session.add(movie)
         await db_session.flush()

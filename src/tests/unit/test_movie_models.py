@@ -1,3 +1,5 @@
+import uuid as uuid_module
+
 import pytest
 from decimal import Decimal
 from sqlalchemy import create_engine
@@ -174,7 +176,7 @@ def test_movie_model_creation(db_session):
     db_session.commit()
 
     movie = MovieModel(
-        uuid="123e4567-e89b-12d3-a456-426614174000",
+        uuid=uuid_module.uuid4(),
         name="Indiana Jones",
         year=1981,
         time=115,
@@ -212,7 +214,7 @@ def test_movie_unique_constraint(db_session):
     db_session.commit()
 
     movie1 = MovieModel(
-        uuid="11111111-1111-1111-1111-111111111111",
+        uuid=uuid_module.uuid4(),
         name="Back to the Future",
         year=1985,
         time=116,
@@ -224,7 +226,7 @@ def test_movie_unique_constraint(db_session):
     )
 
     movie2 = MovieModel(
-        uuid="22222222-2222-2222-2222-222222222222",
+        uuid=uuid_module.uuid4(),
         name="Back to the Future",
         year=1985,
         time=116,
@@ -265,7 +267,7 @@ def test_movie_genre_association(db_session):
     Verifies the many-to-many association between MovieModel and GenreModel.
     """
     movie = MovieModel(
-        uuid="33333333-3333-3333-3333-333333333333",
+        uuid=uuid_module.uuid4(),
         name="The Matrix",
         year=1999,
         time=136,
@@ -294,7 +296,7 @@ def test_movie_star_association(db_session):
     Verifies the many-to-many association between MovieModel and StarModel.
     """
     movie = MovieModel(
-        uuid="44444444-4444-4444-4444-444444444444",
+        uuid=uuid_module.uuid4(),
         name="Inception",
         year=2010,
         time=148,
@@ -323,7 +325,7 @@ def test_movie_director_association(db_session):
     Verifies the many-to-many association between MovieModel and DirectorModel.
     """
     movie = MovieModel(
-        uuid="55555555-5555-5555-5555-555555555555",
+        uuid=uuid_module.uuid4(),
         name="The Dark Knight",
         year=2008,
         time=152,

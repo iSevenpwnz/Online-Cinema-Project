@@ -3,6 +3,8 @@ from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 from sqlalchemy import (
     Column,
     Table,
@@ -12,11 +14,12 @@ from sqlalchemy import (
     Float,
     Text,
     DECIMAL,
-    UniqueConstraint, Index,
+    UniqueConstraint
 )
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
+
 
 if TYPE_CHECKING:
     from .extra_functionality_movie import FavoriteMovie, MovieRating
@@ -143,16 +146,16 @@ class MovieModel(Base):
     __tablename__ = "movies"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uuid: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    name: Mapped[str] = mapped_column(String(250), nullable=False)
-    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    uuid: Mapped[UUID] = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=True)
+    name: Mapped[str] = mapped_column(String(250), nullable=False, index=True)
+    year: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     time: Mapped[int] = mapped_column(Integer, nullable=False)
-    imdb: Mapped[float] = mapped_column(Float, nullable=False)
+    imdb: Mapped[float] = mapped_column(Float, nullable=False, index=True)
     votes: Mapped[int] = mapped_column(Integer, nullable=False)
     meta_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     gross: Mapped[float | None] = mapped_column(Float, nullable=True)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    price: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False, index=True)
 
     certification_id: Mapped[int] = mapped_column(
         ForeignKey("certifications.id"), nullable=False

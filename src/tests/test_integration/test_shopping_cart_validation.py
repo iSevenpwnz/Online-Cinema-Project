@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+import uuid
 
 from database.models.movies import MovieModel, CertificationModel, CertificationEnum
 from database.models.shopping_cart import Cart, CartItem
@@ -36,7 +37,7 @@ async def movie(db_session: AsyncSession):
     await db_session.commit()
 
     movie = MovieModel(
-        uuid="test-uuid",
+        uuid=uuid.uuid4(),
         name="Test Movie",
         year=2024,
         time=120,

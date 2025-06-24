@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body, status
@@ -667,7 +668,7 @@ async def update_movie(
 
         movie_dict = MovieDetailSchema(
             id=movie.id,
-            uuid=movie.uuid,
+            uuid=uuid.UUID(str(movie.uuid)),
             name=movie.name,
             year=movie.year,
             time=movie.time,

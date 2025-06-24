@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.conftest import client, db_session, seed_user_groups
 from decimal import Decimal
 from typing import Any
+import uuid
 
 
 @pytest.fixture
@@ -47,7 +48,7 @@ async def certification(db_session: AsyncSession):
 async def movie(db_session: AsyncSession, certification):
     """Create a test movie."""
     movie = MovieModel(
-        uuid="test-movie-uuid",
+        uuid=uuid.uuid4(),
         name="Test Movie",
         year=2024,
         time=90,
@@ -190,7 +191,7 @@ async def test_admin_view_user_cart(
     
     # Create a movie
     movie = MovieModel(
-        uuid="test-movie-uuid",
+        uuid=uuid.uuid4(),
         name="Test Movie",
         year=2024,
         time=120,

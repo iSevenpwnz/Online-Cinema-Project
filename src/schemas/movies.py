@@ -2,6 +2,7 @@ from decimal import Decimal
 from datetime import datetime
 from typing import Optional, List, Union
 from pydantic import BaseModel, Field, field_validator
+import uuid as uuid_module
 
 
 from schemas.examples.movies import (
@@ -136,7 +137,7 @@ class CertificationSchema(BaseModel):
 
 class MovieBaseSchema(BaseModel):
 
-    uuid: str = Field(..., max_length=100)
+    uuid: uuid_module.UUID
     name: str = Field(..., max_length=250)
     year: int = Field(...)
     time: int = Field(..., ge=15, le=150)
@@ -212,7 +213,7 @@ class MovieCreateSchema(MovieBaseSchema):
 
 class MovieUpdateSchema(BaseModel):
 
-    uuid: Optional[str] = Field(None, max_length=100)
+    uuid: Optional[uuid_module.UUID] = Field(default=None)
     name: Optional[str] = Field(None, max_length=250, min_length=1)
     year: Optional[int] = Field(None, le=datetime.now().year)
     time: Optional[int] = Field(None, ge=1, le=150)

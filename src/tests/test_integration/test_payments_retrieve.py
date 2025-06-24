@@ -12,6 +12,7 @@ from database.models.payments import (
 )
 from database.models.movies import MovieModel
 from database.models.accounts import UserGroupEnum, UserGroupModel, UserModel
+import uuid
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ async def payment_with_items(
 ) -> PaymentModel:
     # Create a movie
     movie = MovieModel(
-        uuid="uuid-10",
+        uuid=uuid.uuid4(),
         name="Retrieve Test Movie",
         year=2024,
         time=120,
@@ -92,7 +93,7 @@ async def more_payments(
     payments: List[PaymentModel] = []
     for i in range(3):
         movie = MovieModel(
-            uuid=f"uuid-{20+i}",
+            uuid=uuid.uuid4(),
             name=f"Movie {i}",
             year=2024,
             time=90 + i * 10,
@@ -226,7 +227,7 @@ async def test_get_payments_pagination(
 ):
     # Add a second payment for pagination
     movie2 = MovieModel(
-        uuid="uuid-11",
+        uuid=uuid.uuid4(),
         name="Second Movie",
         year=2024,
         time=100,
