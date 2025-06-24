@@ -20,6 +20,7 @@ from schemas.profiles import ProfileCreateSchema, ProfileResponseSchema
 from security.interfaces import JWTAuthManagerInterface
 from security.http import get_current_user, get_token, get_token_user_id
 from storages import S3StorageInterface
+import uuid
 
 
 router = APIRouter()
@@ -107,7 +108,20 @@ async def create_profile(
         )
 
     avatar_bytes = await profile_data.avatar.read()
-    avatar_key = f"avatars/{user.id}_{profile_data.avatar.filename}"
+
+    if profile_data.avatar.filename is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Avatar filename is missing.",
+        )
+
+    file_extension = (
+        profile_data.avatar.filename.split(".")[-1]
+        if "." in profile_data.avatar.filename
+        else ""
+    )
+    avatar_uuid = uuid.uuid4()
+    avatar_key = f"avatars/{user.id}_{avatar_uuid}.{file_extension}"
 
     try:
         await s3_client.upload_file(

@@ -41,7 +41,6 @@ async def test_create_user_profile_with_fake_s3(
     img.save(img_bytes, format="JPEG")
     img_bytes.seek(0)
 
-    avatar_key = f"avatars/{user.id}_avatar.jpg"
     profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
     headers = {"Authorization": f"Bearer {access_token}"}
     files = {
@@ -62,6 +61,8 @@ async def test_create_user_profile_with_fake_s3(
     assert profile_data["gender"] == "man", "Gender does not match."
     assert profile_data["date_of_birth"] == "1990-01-01", "Date of birth does not match."
     assert "avatar" in profile_data, "Avatar URL is missing!"
+
+    avatar_key = profile_data["avatar"].replace("http://fake-s3.local/", "")
 
     assert avatar_key in s3_storage_fake.storage, "Avatar file was not uploaded to Fake S3 Storage!"
     expected_url = f"http://fake-s3.local/{avatar_key}"
@@ -191,7 +192,6 @@ async def test_admin_creates_user_profile(
     img.save(img_bytes, format="JPEG")
     img_bytes.seek(0)
 
-    avatar_key = f"avatars/{regular_user.id}_avatar.jpg"
     profile_url = f"/api/v1/profiles/users/{regular_user.id}/profile/"
     headers = {"Authorization": f"Bearer {admin_token}"}
     files = {
@@ -212,6 +212,8 @@ async def test_admin_creates_user_profile(
     assert profile_data["gender"] == "man"
     assert profile_data["date_of_birth"] == "1990-01-01"
     assert "avatar" in profile_data, "Avatar URL is missing!"
+
+    avatar_key = profile_data["avatar"].replace("http://fake-s3.local/", "")
 
     assert avatar_key in s3_storage_fake.storage, "Avatar file was not uploaded to Fake S3 Storage!"
     expected_url = f"http://fake-s3.local/{avatar_key}"

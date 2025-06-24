@@ -82,6 +82,7 @@ async def register_user(
     email_sender: EmailSenderInterface = Depends(
         get_accounts_email_notificator
     ),
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> UserRegistrationResponseSchema:
     """
     Endpoint for user registration.
@@ -144,7 +145,9 @@ async def register_user(
             detail="An error occurred during user creation.",
         ) from e
     else:
-        activation_link = f"http://127.0.0.1/accounts/activate/?token={activation_token.token}"
+        activation_link = (
+            f"${settings.ACTIVATION_LINK}?token={activation_token.token}"
+        )
 
         await email_sender.send_activation_email(
             new_user.email, activation_link
@@ -190,6 +193,7 @@ async def activate_account(
     email_sender: EmailSenderInterface = Depends(
         get_accounts_email_notificator
     ),
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> MessageResponseSchema:
     """
     Endpoint to activate a user's account.
@@ -249,7 +253,7 @@ async def activate_account(
     await db.delete(token_record)
     await db.commit()
 
-    login_link = "http://127.0.0.1/accounts/login/"
+    login_link = settings.LOGIN_LINK
 
     await email_sender.send_activation_complete_email(
         str(activation_data.email), login_link
@@ -267,6 +271,7 @@ async def regenerate_activation_link(
     email_sender: EmailSenderInterface = Depends(
         get_accounts_email_notificator
     ),
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> MessageResponseSchema:
     """
     Regenerate an activation link for a user account.
@@ -340,7 +345,9 @@ async def regenerate_activation_link(
             detail="An error occurred during token generation.",
         ) from e
     else:
-        activation_link = f"http://127.0.0.1/accounts/activate/?token={activation_token.token}"
+        activation_link = (
+            f"{settings.ACTIVATION_LINK}?token={activation_token.token}"
+        )
 
         await email_sender.send_activation_email(user.email, activation_link)
 
@@ -368,6 +375,7 @@ async def request_password_reset_token(
     email_sender: EmailSenderInterface = Depends(
         get_accounts_email_notificator
     ),
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> MessageResponseSchema:
     """
     Endpoint to request a password reset token.
@@ -408,7 +416,9 @@ async def request_password_reset_token(
     db.add(reset_token)
     await db.commit()
 
-    password_reset_complete_link = f"http://127.0.0.1/accounts/password-reset-complete/?token={reset_token.token}"
+    password_reset_complete_link = (
+        f"{settings.PASSWORD_RESET_COMPLETE_LINK}?token={reset_token.token}"
+    )
 
     await email_sender.send_password_reset_email(
         str(data.email), password_reset_complete_link
@@ -464,6 +474,7 @@ async def reset_password(
     email_sender: EmailSenderInterface = Depends(
         get_accounts_email_notificator
     ),
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> MessageResponseSchema:
     """
     Endpoint for resetting a user's password.
@@ -545,7 +556,7 @@ async def reset_password(
             detail="An error occurred while resetting the password.",
         )
 
-    login_link = "http://127.0.0.1/accounts/login/"
+    login_link = settings.LOGIN_LINK
 
     await email_sender.send_password_reset_complete_email(
         str(data.email), login_link

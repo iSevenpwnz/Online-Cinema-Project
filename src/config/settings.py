@@ -63,6 +63,16 @@ class BaseAppSettings(BaseSettings):
         "STRIPE_WEBHOOK_SECRET", "test_webhook_secret"
     )
 
+    ACTIVATION_LINK: str = os.getenv(
+        "ACTIVATION_LINK",
+        "http://localhost:3000/activate/",
+    )
+    PASSWORD_RESET_COMPLETE_LINK: str = os.getenv(
+        "PASSWORD_RESET_COMPLETE_LINK",
+        "http://localhost:3000/password-reset-complete/",
+    )
+    LOGIN_LINK: str = os.getenv("LOGIN_LINK", "http://127.0.0.1:3000/login/")
+
 
 class Settings(BaseAppSettings):
     pass

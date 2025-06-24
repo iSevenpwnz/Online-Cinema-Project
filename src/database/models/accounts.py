@@ -106,7 +106,7 @@ class UserModel(Base):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
 
     def has_group(self, group_name: UserGroupEnum) -> bool:
-        return self.group.name == group_name
+        return self.group is not None and self.group.name == group_name
 
     @classmethod
     def create(cls, email: str, raw_password: str, group_id: int | Mapped[int]) -> "UserModel":
